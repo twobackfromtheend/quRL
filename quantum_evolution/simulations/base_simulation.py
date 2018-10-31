@@ -29,15 +29,22 @@ class BaseSimulation:
         self.hamiltonian = hamiltonian
         self.psi0 = psi0
         self.result = None
+        self.options = Options(store_states=True)
 
     @staticmethod
     def H1_coeff(t: float, args: CoefficientArgs):
         raise NotImplementedError()
 
     @log_process(logger, 'solving')
-    def solve(self, tlist: Union[list, np.array]):
+    def solve(self, tlist: Union[list, np.array], c_ops: List[Qobj] = None, e_ops: List[Qobj] = None):
+        c_ops = [] if c_ops is None else c_ops
+        e_ops = [] if e_ops is None else e_ops
+
         self.result = mesolve(
             [hamiltonian_data.format_for_solver() for hamiltonian_data in self.hamiltonian],
             self.psi0,
-            tlist
+            tlist,
+            c_ops=c_ops,
+            e_ops=e_ops,
+            options=self.options
         )
