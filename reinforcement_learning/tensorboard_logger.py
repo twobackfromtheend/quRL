@@ -1,4 +1,5 @@
 import os
+import pathlib
 from typing import List
 
 import tensorflow as tf
@@ -21,8 +22,14 @@ def tf_log(callback: TensorBoard, names: List[str], logs: List[float], batch_no:
         callback.writer.flush()
 
 
-def create_callback(model) -> TensorBoard:
-    callback = TensorBoard(log_path)
-    callback.set_model(model)
+i = 0
 
+
+def create_callback(model) -> TensorBoard:
+    global i
+    _log_path = os.path.join(log_path, f"run_{i}")
+    pathlib.Path(_log_path).mkdir(parents=True, exist_ok=True)
+    callback = TensorBoard(_log_path)
+    callback.set_model(model)
+    i += 1
     return callback
