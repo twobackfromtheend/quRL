@@ -9,6 +9,7 @@ from quantum_evolution.simulations.base_simulation import HamiltonianData, BaseS
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
+
 def H1_coeff(t, args):
     return -0.1 * t
 
