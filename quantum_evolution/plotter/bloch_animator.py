@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from qutip import *
 from qutip.solver import Result
 
-from quantum_evolution.logger_utils.logger_utils import log_process
+from logger_utils.logger_utils import log_process
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from typing import List, Union, Callable
 import numpy as np
 from qutip import *
 
-from quantum_evolution.logger_utils.logger_utils import log_process
+from logger_utils.logger_utils import log_process
 
 logger = logging.getLogger(__name__)
 
