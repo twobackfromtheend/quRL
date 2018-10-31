@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExplorationOptions:
-    def __init__(self, starting_value: float = 0.8, decay: float = 0.99):
+    def __init__(self, starting_value: float = 1, decay: float = 0.995, min_value: float = 0.1):
         """
         Defines exploration rate, the rate at which an agent randomly decides its action instead of being greedy.
         :param starting_value: initial exploration rate, default: 0.8
@@ -23,7 +23,11 @@ class ExplorationOptions:
 
         self.starting_value = starting_value
         self.current_value = starting_value
+        self.min_value = min_value
         self.decay = decay
+
+    def decay_current_value(self):
+        self.current_value = max(self.min_value, self.current_value * self.decay)
 
 
 class QLearningHyperparameters:
@@ -47,7 +51,7 @@ class QTrainer(BaseTrainer):
         self.tensorboard = create_callback(self.model.model) if with_tensorboard else None
 
     @log_process(logger, 'training')
-    def train(self, episodes: int = 100):
+    def train(self, episodes: int = 1000, render: bool = False):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
 
@@ -58,10 +62,12 @@ class QTrainer(BaseTrainer):
 
             logger.info(f"Episode {i}/{episodes}")
             observation = self.env.reset()
-            exploration.current_value *= exploration.decay
+            exploration.decay_current_value()
 
             reward_total = 0
             for time in range(500):
+                if render:
+                    self.env.render()
                 logger.debug(f"time: {time}")
                 if np.random.random() < exploration.current_value:
                     action = self.env.action_space.sample()
@@ -73,7 +79,7 @@ class QTrainer(BaseTrainer):
                 logger.debug(f"new_observation: {new_observation}")
 
                 # https://keon.io/deep-q-learning/
-                target = reward + gamma * np.max(self.get_q_values(new_observation))
+                target = reward + gamma * np.max(self.get_q_values(new_observation)[0])
                 logger.debug(f"target: {target}")
                 target_vec = self.get_q_values(observation)[0]
                 logger.debug(f"target_vec: {target_vec}")

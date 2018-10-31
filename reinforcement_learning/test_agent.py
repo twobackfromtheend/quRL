@@ -1,5 +1,4 @@
 import logging
-import unittest
 
 import gym
 
@@ -22,11 +21,11 @@ class TestAgent:
             inputs=ENV.observation_space.shape[0],
             outputs=ENV.action_space.n
         )
-        trainer = TRAINER(model, ENV, hyperparameters=QLearningHyperparameters(0.95), with_tensorboard=True)
+        trainer = TRAINER(model, ENV, hyperparameters=QLearningHyperparameters(0.95), with_tensorboard=False)
         self.agent = AGENT_TO_TEST(model, trainer)
 
     def train_agent(self):
-        self.agent.trainer.train()
+        self.agent.trainer.train(render=True)
 
 
 if __name__ == '__main__':
