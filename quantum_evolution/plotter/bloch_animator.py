@@ -16,7 +16,7 @@ SpinArray = np.array
 
 
 class BlochAnimator:
-    def __init__(self, result: Result):
+    def __init__(self, result: Result, plot_expect=None):
         self.fig = plt.figure()
         self.ax = Axes3D(self.fig, azim=-40)
         self.ax.set_aspect('equal')
@@ -24,10 +24,14 @@ class BlochAnimator:
         self.anim: Optional[FuncAnimation] = None
         self.result = result
 
+        self.plot_expect = plot_expect if plot_expect is not None else len(result.expect) == 3
+
     @staticmethod
     def animate(i: int, self: 'BlochAnimator') -> None:
         self.sphere.clear()
         self.sphere.add_states(self.result.states[i])
+        if self.plot_expect:
+            self.sphere.add_points([_expect[:i+1] for _expect in self.result.expect])
         self.sphere.make_sphere()
 
     def init_func(self) -> None:
