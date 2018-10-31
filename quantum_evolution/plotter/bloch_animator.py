@@ -8,6 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from qutip import *
 from qutip.solver import Result
 
+from quantum_evolution.logger_utils.logger_utils import log_process
+
 logger = logging.getLogger(__name__)
 
 SpinArray = np.array
@@ -31,8 +33,8 @@ class BlochAnimator:
     def init_func(self) -> None:
         self.sphere.vector_color = ['r']
 
+    @log_process(logger, 'generating animation')
     def generate_animation(self):
-        logger.info('Generating animation')
         self.anim = FuncAnimation(
             self.fig,
             self.animate,
@@ -42,21 +44,18 @@ class BlochAnimator:
             init_func=self.init_func,
             repeat=False,
         )
-        logger.info('Finished generating animation.')
 
+    @log_process(logger, 'saving animation')
     def save(self, filename: str = 'bloch_sphere.mp4', fps: int = 30):
         if not self.anim:
             raise AnimationNotGeneratedError()
-        logger.info('Saving animation.')
         self.anim.save(filename, writer="ffmpeg", fps=fps)
-        logger.info('Finished saving animation.')
 
+    @log_process(logger, 'showing animation')
     def show(self):
         if not self.anim:
             raise AnimationNotGeneratedError()
-        logger.info('Showing animation.')
         plt.show()
-        logger.info('Finished showing animation.')
 
 
 class AnimationNotGeneratedError(Exception):

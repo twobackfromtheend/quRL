@@ -4,6 +4,8 @@ from typing import List, Union, Callable
 import numpy as np
 from qutip import *
 
+from quantum_evolution.logger_utils.logger_utils import log_process
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,11 +34,10 @@ class BaseSimulation:
     def H1_coeff(t: float, args: CoefficientArgs):
         raise NotImplementedError()
 
+    @log_process(logger, 'solving')
     def solve(self, tlist: Union[list, np.array]):
-        logger.info('Solving...')
         self.result = mesolve(
             [hamiltonian_data.format_for_solver() for hamiltonian_data in self.hamiltonian],
             self.psi0,
             tlist
         )
-        logger.info('Finished solving.')
