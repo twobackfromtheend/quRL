@@ -15,7 +15,7 @@ logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
 
-class TestAgent:
+class ExampleAgent:
     def __init__(self):
         model = MODEL(
             inputs=ENV.observation_space.shape[0],
@@ -29,5 +29,5 @@ class TestAgent:
 
 
 if __name__ == '__main__':
-    test_agent = TestAgent()
-    test_agent.train_agent()
+    example_agent = ExampleAgent()
+    example_agent.train_agent()
