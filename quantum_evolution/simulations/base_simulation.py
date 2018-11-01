@@ -24,27 +24,28 @@ class HamiltonianData:
 
 
 class BaseSimulation:
-
-    def __init__(self, hamiltonian: List[HamiltonianData], psi0: Qobj = basis(2, 0)):
+    def __init__(self,
+                 hamiltonian: List[HamiltonianData],
+                 psi0: Qobj = basis(2, 0),
+                 t_list: Union[list, np.array] = np.linspace(0, 2 * np.pi, 100),
+                 c_ops: List[Qobj] = None,
+                 e_ops: List[Qobj] = None):
         self.hamiltonian = hamiltonian
         self.psi0 = psi0
+        self.t_list = t_list
+        self.c_ops = [] if c_ops is None else c_ops
+        self.e_ops = [] if e_ops is None else e_ops
+
         self.result = None
         self.options = Options(store_states=True)
 
-    @staticmethod
-    def H1_coeff(t: float, args: CoefficientArgs):
-        raise NotImplementedError()
-
     @log_process(logger, 'solving')
-    def solve(self, tlist: Union[list, np.array], c_ops: List[Qobj] = None, e_ops: List[Qobj] = None):
-        c_ops = [] if c_ops is None else c_ops
-        e_ops = [] if e_ops is None else e_ops
-
+    def solve(self):
         self.result = mesolve(
             [hamiltonian_data.format_for_solver() for hamiltonian_data in self.hamiltonian],
             self.psi0,
-            tlist,
-            c_ops=c_ops,
-            e_ops=e_ops,
+            self.t_list,
+            c_ops=self.c_ops,
+            e_ops=self.e_ops,
             options=self.options
         )
