@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExplorationOptions:
-    def __init__(self, starting_value: float = 1, decay: float = 0.995, min_value: float = 0.1):
+    def __init__(self, starting_value: float = 0.5, decay: float = 0.998, min_value: float = 0.1):
         """
         Defines exploration rate, the rate at which an agent randomly decides its action instead of being greedy.
         :param starting_value: initial exploration rate, default: 0.8
@@ -28,6 +28,7 @@ class ExplorationOptions:
 
     def decay_current_value(self):
         self.current_value = max(self.min_value, self.current_value * self.decay)
+        logger.debug(f'decayed epsilon: {self.current_value}')
 
 
 class QLearningHyperparameters:
@@ -73,22 +74,24 @@ class QTrainer(BaseTrainer):
                     action = self.env.action_space.sample()
                     logger.debug(f"action: {action} (randomly generated)")
                 else:
-                    action = np.argmax(self.get_q_values(observation))
+                    action = np.argmax(self.get_q_values(observation)[0])
                     logger.debug(f"action: {action} (argmaxed)")
                 new_observation, reward, done, info = self.env.step(action)
                 logger.debug(f"new_observation: {new_observation}")
 
                 # https://keon.io/deep-q-learning/
+                reward = reward if not done else -100  # Prevents reward from ballooning
                 target = reward + gamma * np.max(self.get_q_values(new_observation)[0])
+
                 logger.debug(f"target: {target}")
                 target_vec = self.get_q_values(observation)[0]
                 logger.debug(f"target_vec: {target_vec}")
                 target_vec[action] = target
 
                 loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+                logger.debug(f"loss: {loss}")
                 if self.tensorboard:
                     tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, time)
-
                 observation = new_observation
                 reward_total += reward
                 if done:
