@@ -1,6 +1,6 @@
 import random
 from collections import OrderedDict
-from typing import List, Union
+from typing import List
 
 import numpy as np
 from gym import spaces
@@ -49,9 +49,6 @@ class QEnv1(BasePseudoEnv):
         return seed
 
     def get_reward(self) -> float:
-        print(self.current_state)
-        print(self.target_state)
-        print(fidelity(self.current_state, self.target_state))
         return fidelity(self.current_state, self.target_state)
 
     def get_random_action(self) -> int:
@@ -60,7 +57,7 @@ class QEnv1(BasePseudoEnv):
     @staticmethod
     def convert_int_to_bit_list(action: int, N: int) -> List[int]:
         """
-        :param actions: Integer that should be intepreted as N bits.
+        :param action: Integer that should be interpreted as N bits.
         :param N:
         :return:
         """

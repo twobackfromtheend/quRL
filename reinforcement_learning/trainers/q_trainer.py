@@ -91,7 +91,8 @@ class QTrainer(BaseTrainer):
                 loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
                 logger.debug(f"loss: {loss}")
                 if self.tensorboard:
-                    tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, time)
+                    if i % 10 == 0:
+                        tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, time)
                 observation = new_observation
                 reward_total += reward
                 if done:
