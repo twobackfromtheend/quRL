@@ -80,7 +80,6 @@ class PseudoEnvTrainer(BaseTrainer):
                 logger.debug(f"new_observation: {new_observation}")
 
                 # https://keon.io/deep-q-learning/
-                reward = reward if not done else -100  # Prevents reward from ballooning
                 target = reward + gamma * np.max(self.get_q_values(new_observation))
 
                 logger.debug(f"target: {target}")
