@@ -17,7 +17,7 @@ class EnvSimulation(BaseSimulation):
         super().__init__(hamiltonian, psi0, t_list, c_ops, e_ops)
 
     def solve_with_actions(self, actions: List[int], N: int):
-        hamiltonian_data = self.hamiltonian[0]
+        hamiltonian_data = self.hamiltonian[1]
         hamiltonian_data.callback = self.get_H1_coeff(actions, N)
         super().solve()
 
