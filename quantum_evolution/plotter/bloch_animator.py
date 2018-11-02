@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +16,7 @@ SpinArray = np.array
 
 
 class BlochAnimator:
-    def __init__(self, result: Result, plot_expect: bool = None):
+    def __init__(self, result: Result, plot_expect: bool = None, static_states: Sequence[Qobj] = None):
         self.fig = plt.figure()
         self.ax = Axes3D(self.fig, azim=-40)
         self.ax.set_aspect('equal')
@@ -25,6 +25,7 @@ class BlochAnimator:
         self.result = result
 
         self.plot_expect = plot_expect if plot_expect is not None else len(result.expect) == 3
+        self.static_states = static_states
 
     @staticmethod
     def animate(i: int, self: 'BlochAnimator') -> None:
@@ -32,6 +33,9 @@ class BlochAnimator:
         self.sphere.add_states(self.result.states[i])
         if self.plot_expect:
             self.sphere.add_points([_expect[:i + 1] for _expect in self.result.expect])
+
+        if self.static_states is not None:
+            self.sphere.add_states(self.static_states)
         self.sphere.make_sphere()
 
     def init_func(self) -> None:

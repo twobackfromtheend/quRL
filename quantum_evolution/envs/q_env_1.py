@@ -5,9 +5,9 @@ from typing import List
 import numpy as np
 from gym import spaces
 from qutip import Qobj, fidelity
-from qutip.solver import Result
 
 from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 
 observation_space = OrderedDict()
@@ -33,9 +33,9 @@ class QEnv1(BasePseudoEnv):
     def step(self, action):
         actions = self.convert_int_to_bit_list(action, self.N)
         self.simulation.solve_with_actions(actions, self.N)
-        result: Result = self.simulation.result
+        self.result = self.simulation.result
 
-        self.current_state = result.states[-1]
+        self.current_state = self.result.states[-1]
         observation = self.get_state_as_observation(self.current_state)
 
         reward = self.get_reward()
@@ -43,7 +43,9 @@ class QEnv1(BasePseudoEnv):
         return observation, reward, done, {}
 
     def render(self, mode='human'):
-        pass
+        bloch_animation = BlochAnimator(self.result, static_states=[self.target_state])
+        bloch_animation.generate_animation()
+        bloch_animation.show()
 
     def seed(self, seed=None):
         return seed

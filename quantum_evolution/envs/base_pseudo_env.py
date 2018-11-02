@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 from qutip import rand_dm, Qobj, sigmaz, sigmay, sigmax
+from qutip.solver import Result
 
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
@@ -26,6 +27,7 @@ class BasePseudoEnv:
         self.current_state: Qobj = None
         self.target_state: Qobj = None
         self.simulation: EnvSimulation = None
+        self.result: Result = None  # Should be set in the step() method of subclasses.
         self.reset()
 
     def step(self, action) -> Tuple[np.ndarray, float, bool, object]:
@@ -44,7 +46,7 @@ class BasePseudoEnv:
 
         self.simulation = EnvSimulation(self.hamiltonian, psi0=self.current_state, t_list=self.t_list,
                                         e_ops=[sigmax(), sigmay(), sigmaz()])
-
+        self.result = None
         return self.get_state_as_observation(self.current_state)
 
     @staticmethod
