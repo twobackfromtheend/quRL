@@ -15,9 +15,9 @@ class CoefficientArgs:
 
 
 class HamiltonianData:
-    def __init__(self, operator: Qobj, callback: Union[Callable[[float, CoefficientArgs], float], str]):
+    def __init__(self, operator: Qobj, callback: Union[Callable[[float, CoefficientArgs], float], str] = None):
         self.operator = operator
-        self.callback = callback
+        self.callback = callback if callback is not None else lambda t, args: 1  # TODO: Avoid creating lambda
 
     def format_for_solver(self):
         return [self.operator, self.callback]
