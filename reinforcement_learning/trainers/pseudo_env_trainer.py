@@ -58,48 +58,37 @@ class PseudoEnvTrainer(BaseTrainer):
 
         reward_totals = []
         for i in range(episodes):
-            if self.tensorboard:
-                self.tensorboard = create_callback(self.model.model)
-
             logger.info(f"Episode {i}/{episodes}")
             observation = self.env.reset()
             exploration.decay_current_value()
 
-            reward_total = 0
-            for time in range(500):
-                if render:
-                    self.env.render()
-                logger.debug(f"time: {time}")
-                if np.random.random() < exploration.current_value:
-                    action = self.env.get_random_action()
-                    logger.debug(f"action: {action} (randomly generated)")
-                else:
-                    action = int(np.argmax(self.get_q_values(observation)))
-                    logger.debug(f"action: {action} (argmaxed)")
-                new_observation, reward, done, info = self.env.step(action)
-                logger.debug(f"new_observation: {new_observation}")
+            if np.random.random() < exploration.current_value:
+                action = self.env.get_random_action()
+                logger.debug(f"action: {action} (randomly generated)")
+            else:
+                action = int(np.argmax(self.get_q_values(observation)))
+                logger.debug(f"action: {action} (argmaxed)")
+            new_observation, reward, done, info = self.env.step(action)
+            logger.debug(f"new_observation: {new_observation}")
 
-                # https://keon.io/deep-q-learning/
-                target = reward + gamma * np.max(self.get_q_values(new_observation))
+            # https://keon.io/deep-q-learning/
+            target = reward + gamma * np.max(self.get_q_values(new_observation))
 
-                logger.debug(f"target: {target}")
-                target_vec = self.get_q_values(observation)
-                logger.debug(f"target_vec: {target_vec}")
-                target_vec[action] = target
+            logger.debug(f"target: {target}")
+            target_vec = self.get_q_values(observation)
+            logger.debug(f"target_vec: {target_vec}")
+            target_vec[action] = target
 
-                loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
-                logger.debug(f"loss: {loss}")
-                if self.tensorboard:
-                    if i % 10 == 0:
-                        tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, time)
-                observation = new_observation
-                reward_total += reward
-                if done:
-                    logger.info(f"Episode: {i}, time: {time}")
-                    break
-            logger.info(f"reward total: {reward_total}")
+            loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+            logger.debug(f"loss: {loss}")
+            if self.tensorboard:
+                tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, i)
 
-            reward_totals.append(reward_total)
+            logger.info(f"Episode: {i}, reward: {reward}")
+            reward_totals.append(reward)
+
+            if render and i % 10 == 0:
+                self.env.render()
 
         self.reward_totals = reward_totals
 

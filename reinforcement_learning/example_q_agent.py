@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from qutip import sigmax
+from qutip import sigmax, sigmaz
 
 from quantum_evolution.envs.q_env_1 import QEnv1
 from quantum_evolution.simulations.base_simulation import HamiltonianData
@@ -16,11 +16,22 @@ TRAINER = PseudoEnvTrainer
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
+initial_state = (-sigmaz() + 2 * sigmax()).groundstate()[1]
+target_state = (-sigmaz() - 2 * sigmax()).groundstate()[1]
 
-hamiltonian_data = HamiltonianData(sigmax(), lambda t, args: 0)
+
+def placeholder_callback(t, args):
+    raise RuntimeError
+
+
+hamiltonian_datas = [
+    HamiltonianData(-sigmaz()),
+    HamiltonianData(sigmax(), placeholder_callback)
+]
 N = 20
 t_list = np.linspace(0, 2 * np.pi, 200)
-ENV = QEnv1([hamiltonian_data], t_list=t_list, N=N)
+ENV = QEnv1(hamiltonian_datas, t_list=t_list, N=N,
+            initial_state=initial_state, target_state=target_state)
 
 
 class ExampleQAgent:
