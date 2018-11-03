@@ -14,7 +14,7 @@ MODEL = DenseModel
 TRAINER = PseudoEnvTrainer
 
 logger = logging.getLogger()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 initial_state = (-sigmaz() + 2 * sigmax()).groundstate()[1]
 target_state = (-sigmaz() - 2 * sigmax()).groundstate()[1]
@@ -29,7 +29,7 @@ hamiltonian_datas = [
     HamiltonianData(sigmax(), placeholder_callback)
 ]
 N = 20
-t_list = np.linspace(0, 2 * np.pi, 200)
+t_list = np.linspace(0, 3, 200)
 ENV = QEnv1(hamiltonian_datas, t_list=t_list, N=N,
             initial_state=initial_state, target_state=target_state)
 
@@ -38,13 +38,14 @@ class ExampleQAgent:
     def __init__(self):
         model = MODEL(
             inputs=3,
-            outputs=2 ** N
+            outputs=2 ** N,
+            learning_rate=3e-2
         )
-        trainer = TRAINER(model, ENV, hyperparameters=QLearningHyperparameters(0.95), with_tensorboard=False)
+        trainer = TRAINER(model, ENV, hyperparameters=QLearningHyperparameters(0.01), with_tensorboard=True)
         self.agent = AGENT_TO_TEST(model, trainer)
 
     def train_agent(self):
-        self.agent.trainer.train(render=True)
+        self.agent.trainer.train(episodes=10000, render=True)
 
 
 if __name__ == '__main__':

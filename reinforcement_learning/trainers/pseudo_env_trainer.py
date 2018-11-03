@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExplorationOptions:
-    def __init__(self, starting_value: float = 0.5, decay: float = 0.998, min_value: float = 0.1):
+    def __init__(self, starting_value: float = 1, decay: float = 0.999, min_value: float = 0.2):
         """
         Defines exploration rate, the rate at which an agent randomly decides its action instead of being greedy.
         :param starting_value: initial exploration rate, default: 0.8
@@ -39,7 +39,7 @@ class QLearningHyperparameters:
         :param exploration_options: See ExplorationOptions
         """
         self.decay_rate = decay_rate
-        assert 0.5 < decay_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
+        assert 0 < decay_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
         self.exploration_options = exploration_options
 
 
@@ -61,13 +61,13 @@ class PseudoEnvTrainer(BaseTrainer):
             logger.info(f"Episode {i}/{episodes}")
             observation = self.env.reset()
             exploration.decay_current_value()
+            logger.info(f"exploration: {exploration.current_value}")
 
-            if np.random.random() < exploration.current_value:
-                action = self.env.get_random_action()
-                logger.debug(f"action: {action} (randomly generated)")
-            else:
-                action = int(np.argmax(self.get_q_values(observation)))
-                logger.debug(f"action: {action} (argmaxed)")
+            action = int(np.argmax(self.get_q_values(observation)))
+            logger.debug(f"original action  : {self.env.convert_int_to_bit_list(action, self.env.N)}")
+            action = self.env.randomise_action(action, exploration.current_value)
+            logger.debug(f"randomised action: {self.env.convert_int_to_bit_list(action, self.env.N)}")
+
             new_observation, reward, done, info = self.env.step(action)
             logger.debug(f"new_observation: {new_observation}")
 
@@ -80,14 +80,14 @@ class PseudoEnvTrainer(BaseTrainer):
             target_vec[action] = target
 
             loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
-            logger.debug(f"loss: {loss}")
+            logger.info(f"loss: {loss}")
             if self.tensorboard:
-                tf_log(self.tensorboard, ['train_loss', 'train_mae'], loss, i)
+                tf_log(self.tensorboard, ['train_loss', 'train_mae', 'reward'], [loss[0], loss[1], reward], i)
 
             logger.info(f"Episode: {i}, reward: {reward}")
             reward_totals.append(reward)
 
-            if render and i % 10 == 0:
+            if render and (i == 50 or i % 400 == 0):
                 self.env.render()
 
         self.reward_totals = reward_totals
