@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 from typing import List
@@ -6,6 +7,9 @@ import tensorflow as tf
 from tensorflow.python.keras.callbacks import TensorBoard
 
 LOG_FOLDER = "tensorboard_logs"
+FOLDER_PREFIX = "run"
+
+logger = logging.getLogger(__name__)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 log_path = os.path.join(dir_path, LOG_FOLDER)
@@ -22,14 +26,26 @@ def tf_log(callback: TensorBoard, names: List[str], logs: List[float], batch_no:
         callback.writer.flush()
 
 
-i = 0
-
-
 def create_callback(model) -> TensorBoard:
-    global i
-    _log_path = os.path.join(log_path, f"run_{i}")
+    i = find_max_run_number() + 1
+    _log_path = os.path.join(log_path, f"{FOLDER_PREFIX}_{i}")
     pathlib.Path(_log_path).mkdir(parents=True, exist_ok=True)
     callback = TensorBoard(_log_path)
     callback.set_model(model)
-    i += 1
+    logger.info(f"Created {_log_path} in {LOG_FOLDER}")
+
     return callback
+
+
+def find_max_run_number() -> int:
+    files = os.listdir(log_path)
+    run_numbers = []
+    for file in files:
+        if file.startswith(FOLDER_PREFIX):
+            run_number = int(file[len(FOLDER_PREFIX) + 1:])
+            run_numbers.append(run_number)
+    return max(run_numbers)
+
+
+if __name__ == '__main__':
+    find_max_run_number()
