@@ -1,7 +1,7 @@
-from typing import List, Tuple
+from typing import Tuple, Sequence
 
 import numpy as np
-from qutip import rand_dm, Qobj, sigmaz, sigmay, sigmax
+from qutip import rand_dm, Qobj, sigmaz, sigmay, sigmax, expect
 from qutip.solver import Result
 
 from quantum_evolution.simulations.base_simulation import HamiltonianData
@@ -15,7 +15,7 @@ class BasePseudoEnv:
     """
 
     def __init__(self,
-                 hamiltonian: List[HamiltonianData],
+                 hamiltonian: Sequence[HamiltonianData],
                  initial_state: Qobj,
                  target_state: Qobj,
                  t_list: np.ndarray):
@@ -58,4 +58,5 @@ class BasePseudoEnv:
 
     @staticmethod
     def get_state_as_observation(state: Qobj) -> np.ndarray:
-        return state.data.toarray()
+        expect_operators = [sigmax(), sigmay(), sigmaz()]
+        return np.array([expect(operator, state) for operator in expect_operators])

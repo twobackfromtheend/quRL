@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Sequence
 
 import numpy as np
 from qutip import *
@@ -25,7 +25,7 @@ class HamiltonianData:
 
 class BaseSimulation:
     def __init__(self,
-                 hamiltonian: List[HamiltonianData],
+                 hamiltonian: Sequence[HamiltonianData],
                  psi0: Qobj = basis(2, 0),
                  t_list: Union[list, np.array] = np.linspace(0, 2 * np.pi, 100),
                  c_ops: List[Qobj] = None,

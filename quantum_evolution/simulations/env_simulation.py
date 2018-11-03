@@ -1,5 +1,5 @@
 import math
-from typing import List, Union
+from typing import List, Union, Sequence
 
 import numpy as np
 from qutip import Qobj, basis
@@ -10,7 +10,7 @@ from quantum_evolution.simulations.base_simulation import BaseSimulation, Hamilt
 class EnvSimulation(BaseSimulation):
 
     def __init__(self,
-                 hamiltonian: List[HamiltonianData],
+                 hamiltonian: Sequence[HamiltonianData],
                  psi0: Qobj = basis(2, 0),
                  t_list: Union[list, np.array] = np.linspace(0, 2 * np.pi, 100), c_ops: List[Qobj] = None,
                  e_ops: List[Qobj] = None):
@@ -27,6 +27,8 @@ class EnvSimulation(BaseSimulation):
         def H1_coeff(t, args):
             action_index = min(N - 1, int(math.floor(t / max_t * N)))
             action_to_use = actions[action_index]
-            return -4 * action_to_use
+            action = -4 * (action_to_use - 0.5) * 2
+            # print(action)
+            return action
 
         return H1_coeff

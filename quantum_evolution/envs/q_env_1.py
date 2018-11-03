@@ -1,6 +1,6 @@
 import random
 from collections import OrderedDict
-from typing import List
+from typing import List, Sequence
 
 import numpy as np
 from gym import spaces
@@ -22,7 +22,7 @@ class QEnv1(BasePseudoEnv):
     observation_space = observation_space
 
     def __init__(self,
-                 hamiltonian: List[HamiltonianData],
+                 hamiltonian: Sequence[HamiltonianData],
                  t_list: np.ndarray,
                  N: int,
                  initial_state: Qobj = None,
@@ -43,7 +43,7 @@ class QEnv1(BasePseudoEnv):
         return observation, reward, done, {}
 
     def render(self, mode='human'):
-        bloch_animation = BlochAnimator(self.result, static_states=[self.target_state])
+        bloch_animation = BlochAnimator([self.result], static_states=[self.target_state])
         bloch_animation.generate_animation()
         bloch_animation.show()
 
@@ -51,10 +51,18 @@ class QEnv1(BasePseudoEnv):
         return seed
 
     def get_reward(self) -> float:
-        return fidelity(self.current_state, self.target_state)
+        _fidelity = fidelity(self.current_state, self.target_state)
+        return _fidelity - 0.5
 
-    def get_random_action(self) -> int:
-        return random.getrandbits(self.N)
+    def randomise_action(self, action: int, epsilon: float) -> int:
+        bits_to_randomise = np.random.choice((0, 1), size=self.N, p=(1 - epsilon, epsilon))
+        bit_mask = self.convert_bit_list_to_int(bits_to_randomise)
+        random_bits = random.getrandbits(self.N)
+
+        randomised_action = action ^ (random_bits & bit_mask)
+        # print(self.convert_int_to_bit_list(action, self.N), '\n',
+        #       self.convert_int_to_bit_list(randomised_action, self.N), epsilon)
+        return randomised_action
 
     @staticmethod
     def convert_int_to_bit_list(action: int, N: int) -> List[int]:
@@ -65,3 +73,10 @@ class QEnv1(BasePseudoEnv):
         """
         assert action.bit_length() <= N, f"Integer ({action}) cannot be represented with N ({N}) bits"
         return [action >> i & 1 for i in range(N)][::-1]
+
+    @staticmethod
+    def convert_bit_list_to_int(bit_list: Sequence[int]) -> int:
+        _int = 0
+        for bit in bit_list:
+            _int = (_int << 1) | int(bit)
+        return _int

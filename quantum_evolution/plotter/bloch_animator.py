@@ -16,30 +16,31 @@ SpinArray = np.array
 
 
 class BlochAnimator:
-    def __init__(self, result: Result, plot_expect: bool = None, static_states: Sequence[Qobj] = None):
+    def __init__(self, results: Sequence[Result], plot_expect: bool = None, static_states: Sequence[Qobj] = None):
         self.fig = plt.figure()
         self.ax = Axes3D(self.fig, azim=-40)
         self.ax.set_aspect('equal')
         self.sphere = Bloch(axes=self.ax)
         self.anim: Optional[FuncAnimation] = None
-        self.result = result
+        self.results = results
 
-        self.plot_expect = plot_expect if plot_expect is not None else len(result.expect) == 3
+        self.plot_expect = plot_expect if plot_expect is not None else len(results[0].expect) == 3
         self.static_states = static_states
 
     @staticmethod
     def animate(i: int, self: 'BlochAnimator') -> None:
         self.sphere.clear()
-        self.sphere.add_states(self.result.states[i])
-        if self.plot_expect:
-            self.sphere.add_points([_expect[:i + 1] for _expect in self.result.expect])
+        for result in self.results:
+            self.sphere.add_states(result.states[i])
+            if self.plot_expect:
+                self.sphere.add_points([_expect[:i + 1] for _expect in result.expect])
 
         if self.static_states is not None:
             self.sphere.add_states(self.static_states)
         self.sphere.make_sphere()
 
     def init_func(self) -> None:
-        self.sphere.vector_color = ['r']
+        pass
 
     @log_process(logger, 'generating animation')
     def generate_animation(self):
@@ -47,7 +48,7 @@ class BlochAnimator:
             self.fig,
             self.animate,
             fargs=(self,),
-            frames=len(self.result.states),
+            frames=len(self.results[0].states),
             interval=1 / 60,
             init_func=self.init_func,
             repeat=False,

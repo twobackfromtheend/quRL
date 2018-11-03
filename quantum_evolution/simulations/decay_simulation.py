@@ -24,7 +24,7 @@ decay_simulation = BaseSimulation([DEFAULT_HAMILTONIAN_DATA], psi0, t_list=t_lis
 
 decay_simulation.solve()
 
-bloch_animation = BlochAnimator(decay_simulation.result)
+bloch_animation = BlochAnimator([decay_simulation.result])
 bloch_animation.generate_animation()
 bloch_animation.show()
-# bloch_animation.save()
+
