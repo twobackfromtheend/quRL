@@ -9,7 +9,7 @@ from reinforcement_learning.trainers.base_trainer import BaseTrainer
 logger = logging.getLogger(__name__)
 
 
-class PseudoEnvTrainer(BaseTrainer):
+class QEnv1Trainer(BaseTrainer):
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False):
         exploration = self.hyperparameters.exploration_options
@@ -57,3 +57,34 @@ class PseudoEnvTrainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
+
+if __name__ == '__main__':
+    from qutip import *
+    from quantum_evolution.envs.q_env_1 import QEnv1
+    from quantum_evolution.simulations.base_simulation import HamiltonianData
+    from reinforcement_learning.models.dense_model import DenseModel
+    from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+
+    logger = logging.getLogger()
+    logging.basicConfig(level=logging.DEBUG)
+
+    initial_state = (-sigmaz() + 2 * sigmax()).groundstate()[1]
+    target_state = (-sigmaz() - 2 * sigmax()).groundstate()[1]
+
+
+    def placeholder_callback(t, args):
+        raise RuntimeError
+
+
+    hamiltonian_datas = [
+        HamiltonianData(-sigmaz()),
+        HamiltonianData(sigmax(), placeholder_callback)
+    ]
+    N = 20
+    t_list = np.linspace(0, 3, 200)
+    env = QEnv1(hamiltonian_datas, t_list=t_list, N=N,
+                initial_state=initial_state, target_state=target_state)
+    model = DenseModel(inputs=3, outputs=2 ** N, learning_rate=3e-2)
+
+    trainer = QEnv1Trainer(model, env, hyperparameters=QLearningHyperparameters(0.01), with_tensorboard=True)
+    trainer.train(render=True)
