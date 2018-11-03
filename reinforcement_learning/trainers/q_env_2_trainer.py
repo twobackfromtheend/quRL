@@ -7,7 +7,7 @@ from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +137,17 @@ if __name__ == '__main__':
         HamiltonianData(sigmax(), placeholder_callback)
     ]
     N = 40
-    t = 2
+    t = 0.4
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
     model = DenseModel(inputs=2, outputs=2, learning_rate=3e-3)
 
-    trainer = QEnv2Trainer(model, env, hyperparameters=QLearningHyperparameters(0.95), with_tensorboard=True)
+    trainer = QEnv2Trainer(
+        model, env,
+        hyperparameters=QLearningHyperparameters(
+            0.95,
+            ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56%.
+        ),
+        with_tensorboard=True
+    )
     trainer.train(render=True)
