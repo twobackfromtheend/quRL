@@ -7,7 +7,8 @@ from quantum_evolution.envs.q_env_1 import QEnv1
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from reinforcement_learning.base_agent import BaseAgent
 from reinforcement_learning.models.dense_model import DenseModel
-from reinforcement_learning.trainers.pseudo_env_trainer import PseudoEnvTrainer, QLearningHyperparameters
+from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.pseudo_env_trainer import PseudoEnvTrainer
 
 AGENT_TO_TEST = BaseAgent
 MODEL = DenseModel

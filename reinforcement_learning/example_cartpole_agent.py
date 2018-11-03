@@ -4,7 +4,8 @@ import gym
 
 from reinforcement_learning.base_agent import BaseAgent
 from reinforcement_learning.models.dense_model import DenseModel
-from reinforcement_learning.trainers.q_trainer import QTrainer, QLearningHyperparameters
+from reinforcement_learning.trainers.q_trainer import QTrainer
+from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
 
 AGENT_TO_TEST = BaseAgent
 MODEL = DenseModel
