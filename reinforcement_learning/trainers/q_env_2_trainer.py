@@ -3,15 +3,23 @@ import logging
 import numpy as np
 
 from logger_utils.logger_utils import log_process
+from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
+from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
 
 logger = logging.getLogger(__name__)
 
 
 class QEnv2Trainer(BaseTrainer):
+    def __init__(self, model: BaseModel, env: BasePseudoEnv, hyperparameters: QLearningHyperparameters,
+                 with_tensorboard: bool):
+        super().__init__(model, env, hyperparameters, with_tensorboard)
+        self.evaluation_tensorboard = None
+
     @log_process(logger, 'training')
-    def train(self, episodes: int = 1000, render: bool = False):
+    def train(self, episodes: int = 1000, render: bool = False, save_every: int=500, evaluate_every: int = 50):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
 
@@ -45,9 +53,10 @@ class QEnv2Trainer(BaseTrainer):
                 target_vec[action] = target
 
                 loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
-                logger.info(f"loss: {loss}")
+                logger.debug(f"loss: {loss}")
                 losses.append(loss)
 
+                observation = new_observation
                 reward_total += reward
                 if render:
                     self.env.render()
@@ -65,6 +74,11 @@ class QEnv2Trainer(BaseTrainer):
 
             reward_totals.append(reward_total)
 
+            if i % evaluate_every == 1:
+                self.evaluate_model(render, i // evaluate_every)
+            if i >= save_every and i % save_every == 0:
+                self.save_model()
+
         self.reward_totals = reward_totals
 
     def get_q_values(self, state) -> np.ndarray:
@@ -73,13 +87,35 @@ class QEnv2Trainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
+    @log_process(logger, "saving model")
+    def save_model(self):
+        self.model.save_model(self.__class__.__name__)
+
+    @log_process(logger, "evaluating model")
+    def evaluate_model(self, render, tensorboard_batch_number: int = None):
+        if self.evaluation_tensorboard is None and tensorboard_batch_number is not None:
+            self.evaluation_tensorboard = create_callback(self.model.model)
+        done = False
+        reward_total = 0
+        observation = self.env.reset()
+        while not done:
+            action = int(np.argmax(self.get_q_values(observation)))
+            new_observation, reward, done, info = self.env.step(action)
+
+            observation = new_observation
+            reward_total += reward
+            if render:
+                self.env.render()
+        if tensorboard_batch_number is not None:
+            tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
+        logger.info(f"Evaluation reward: {reward_total}")
+
 
 if __name__ == '__main__':
     from qutip import *
     from quantum_evolution.envs.q_env_2 import QEnv2
     from quantum_evolution.simulations.base_simulation import HamiltonianData
     from reinforcement_learning.models.dense_model import DenseModel
-    from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
 
     logger = logging.getLogger()
     logging.basicConfig(level=logging.INFO)

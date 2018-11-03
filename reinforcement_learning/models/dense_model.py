@@ -32,7 +32,9 @@ class DenseModel(BaseModel):
     def build_model(self) -> keras.Sequential:
         model = keras.Sequential()
 
-        model.add(keras.layers.Dense(self.inputs))
+        # Verbose version needed because https://github.com/tensorflow/tensorflow/issues/22837#issuecomment-428327601
+        # model.add(keras.layers.Dense(self.inputs))
+        model.add(keras.layers.Dense(input_shape=(self.inputs,), units=self.inputs))
 
         for _layer_nodes in self.layer_nodes:
             model.add(
