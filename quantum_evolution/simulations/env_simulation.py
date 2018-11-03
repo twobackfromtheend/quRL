@@ -34,5 +34,7 @@ class EnvSimulation(BaseSimulation):
         return H1_coeff
 
     def solve_with_coefficient(self, coefficient: int):
-        self.hamiltonian[1].callback = lambda t, args: coefficient
+        def H1_coeff(t, args):
+            return coefficient
+        self.hamiltonian[1].callback = H1_coeff
         super().solve()
