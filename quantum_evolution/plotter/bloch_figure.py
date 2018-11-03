@@ -26,7 +26,7 @@ class BlochFigure:
         self.sphere.clear()
         if len(self.previous_points[0]) != 0:
             self.sphere.add_points(self.previous_points)
-        plotted_states = len(states) // 3
+        plotted_states = max(len(states) // 3, 1)
         for i in range(len(states)):
             if i % plotted_states == 0:
                 state_vector = self.get_expected_value_for_state(states[i])

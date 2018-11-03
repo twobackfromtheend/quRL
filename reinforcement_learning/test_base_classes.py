@@ -16,7 +16,8 @@ class TestClasses(unittest.TestCase):
 
     def test_base_pseudo_env(self):
         with self.assertRaises(NotImplementedError):
-            BasePseudoEnv(rand_ket(2), rand_ket(2))
+            pseudo_env = BasePseudoEnv(rand_ket(2), rand_ket(2))
+            pseudo_env.reset()
 
     def test_base_trainer(self):
         model = DenseModel(5, 5)

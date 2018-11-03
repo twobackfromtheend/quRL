@@ -21,7 +21,7 @@ class BlochFigureTest(unittest.TestCase):
 
     def test_bloch_figure(self):
         for i in range(len(self.result.states)):
-            self.bloch_figure.update(self.result.states[i])
+            self.bloch_figure.update([self.result.states[i]])
             plt.pause(1e-3)
 
 
