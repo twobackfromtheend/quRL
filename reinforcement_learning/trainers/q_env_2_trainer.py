@@ -19,7 +19,7 @@ class QEnv2Trainer(BaseTrainer):
         self.evaluation_tensorboard = None
 
     @log_process(logger, 'training')
-    def train(self, episodes: int = 1000, render: bool = False, save_every: int=500, evaluate_every: int = 50):
+    def train(self, episodes: int = 1000, render: bool = False, save_every: int = 200, evaluate_every: int = 50):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
 
@@ -27,22 +27,22 @@ class QEnv2Trainer(BaseTrainer):
             self.tensorboard = create_callback(self.model.model)
         reward_totals = []
         for i in range(episodes):
-
             logger.info(f"Episode {i}/{episodes}")
             observation = self.env.reset()
             exploration.decay_current_value()
             logger.info(f"exploration: {exploration.current_value}")
             reward_total = 0
             losses = []
+            actions = []
             done = False
             while not done:
                 if np.random.random() < exploration.current_value:
                     action = self.env.get_random_action()
-                    logger.info(f"action: {action} (randomly generated)")
+                    logger.debug(f"action: {action} (randomly generated)")
                 else:
                     action = int(np.argmax(self.get_q_values(observation)))
-                    logger.info(f"action: {action} (argmaxed)")
-
+                    logger.debug(f"action: {action} (argmaxed)")
+                actions.append(action)
                 new_observation, reward, done, info = self.env.step(action)
                 logger.debug(f"new_observation: {new_observation}")
 
@@ -61,6 +61,7 @@ class QEnv2Trainer(BaseTrainer):
                 if render:
                     self.env.render()
                 # time.sleep(0.05)
+            logger.info(f"actions: {actions}")
             logger.info(f"Episode: {i}, reward_total: {reward_total}")
             if self.tensorboard:
                 train_loss = 0
@@ -98,8 +99,10 @@ class QEnv2Trainer(BaseTrainer):
         done = False
         reward_total = 0
         observation = self.env.reset()
+        actions = []
         while not done:
             action = int(np.argmax(self.get_q_values(observation)))
+            actions.append(action)
             new_observation, reward, done, info = self.env.step(action)
 
             observation = new_observation
@@ -108,6 +111,7 @@ class QEnv2Trainer(BaseTrainer):
                 self.env.render()
         if tensorboard_batch_number is not None:
             tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
+        logger.info(f"actions: {actions}")
         logger.info(f"Evaluation reward: {reward_total}")
 
 
