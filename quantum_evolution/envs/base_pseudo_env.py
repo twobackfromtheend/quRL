@@ -1,10 +1,9 @@
-from typing import Tuple, Sequence
+from typing import Tuple
 
 import numpy as np
-from qutip import rand_dm, Qobj, sigmaz, sigmay, sigmax, expect
+from qutip import rand_dm, Qobj
 from qutip.solver import Result
 
-from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
 
 
@@ -15,14 +14,10 @@ class BasePseudoEnv:
     """
 
     def __init__(self,
-                 hamiltonian: Sequence[HamiltonianData],
                  initial_state: Qobj,
-                 target_state: Qobj,
-                 t_list: np.ndarray):
+                 target_state: Qobj):
         self.initial_state = initial_state
         self.given_target_state = target_state
-        self.hamiltonian = hamiltonian
-        self.t_list = t_list
 
         self.current_state: Qobj = None
         self.target_state: Qobj = None
@@ -40,14 +35,17 @@ class BasePseudoEnv:
         raise NotImplementedError
 
     def reset(self) -> np.ndarray:
+        if self.simulation is None:
+            raise NotImplementedError("Subclasses of BasePseudoEnv must reset .simulation before calling super.reset")
+
         self.current_state: Qobj = self.initial_state if self.initial_state is not None else self.get_random_state()
         self.target_state: Qobj = self.given_target_state \
             if self.given_target_state is not None else self.get_random_state()
-
-        self.simulation = EnvSimulation(self.hamiltonian, psi0=self.current_state, t_list=self.t_list,
-                                        e_ops=[sigmax(), sigmay(), sigmaz()])
         self.result = None
-        return self.get_state_as_observation(self.current_state)
+        return self.get_state()
+
+    def get_state(self) -> np.ndarray:
+        raise NotImplementedError
 
     @staticmethod
     def get_random_state():
@@ -55,8 +53,3 @@ class BasePseudoEnv:
 
     def get_reward(self) -> float:
         raise NotImplementedError
-
-    @staticmethod
-    def get_state_as_observation(state: Qobj) -> np.ndarray:
-        expect_operators = [sigmax(), sigmay(), sigmaz()]
-        return np.array([expect(operator, state) for operator in expect_operators])

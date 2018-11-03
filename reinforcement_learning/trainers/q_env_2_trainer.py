@@ -9,7 +9,7 @@ from reinforcement_learning.trainers.base_trainer import BaseTrainer
 logger = logging.getLogger(__name__)
 
 
-class PseudoEnvTrainer(BaseTrainer):
+class QEnv2Trainer(BaseTrainer):
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False):
         exploration = self.hyperparameters.exploration_options
@@ -56,4 +56,3 @@ class PseudoEnvTrainer(BaseTrainer):
         q_values = self.model.model.predict(state.reshape((1, -1)))
         logger.debug(f"Q values {q_values}")
         return q_values[0]
-

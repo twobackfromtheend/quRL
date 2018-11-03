@@ -1,25 +1,15 @@
 import logging
-from typing import List
 
 import numpy as np
 
 from logger_utils.logger_utils import log_process
-from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import create_callback, tf_log
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
 
 logger = logging.getLogger(__name__)
 
 
 class QTrainer(BaseTrainer):
-    def __init__(self, model: BaseModel, env, hyperparameters: QLearningHyperparameters, with_tensorboard: bool):
-        super().__init__(model, env)
-        self.hyperparameters = hyperparameters
-        self.env = env
-        self.reward_totals: List[float] = None
-        self.tensorboard = create_callback(self.model.model) if with_tensorboard else None
-
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False):
         exploration = self.hyperparameters.exploration_options
