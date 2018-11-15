@@ -1,9 +1,11 @@
 import logging
 
 import numpy as np
+from qutip.solver import Result
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
@@ -19,7 +21,7 @@ class QEnv2Trainer(BaseTrainer):
         self.evaluation_tensorboard = None
 
     @log_process(logger, 'training')
-    def train(self, episodes: int = 1000, render: bool = False, save_every: int = 200, evaluate_every: int = 50):
+    def train(self, episodes: int = 1000, render: bool = False, save_every: int = 500, evaluate_every: int = 50):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
 
@@ -75,9 +77,9 @@ class QEnv2Trainer(BaseTrainer):
 
             reward_totals.append(reward_total)
 
-            if i % evaluate_every == 1:
+            if i % evaluate_every == evaluate_every - 1:
                 self.evaluate_model(render, i // evaluate_every)
-            if i >= save_every and i % save_every == 0:
+            if i % save_every == save_every - 1:
                 self.save_model()
 
         self.reward_totals = reward_totals
@@ -100,12 +102,15 @@ class QEnv2Trainer(BaseTrainer):
         reward_total = 0
         observation = self.env.reset()
         actions = []
+        states = []
         while not done:
             action = int(np.argmax(self.get_q_values(observation)))
             actions.append(action)
             new_observation, reward, done, info = self.env.step(action)
 
             observation = new_observation
+            result = self.env.simulation.result
+            states += result.states
             reward_total += reward
             if render:
                 self.env.render()
@@ -113,6 +118,17 @@ class QEnv2Trainer(BaseTrainer):
             tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
         logger.info(f"actions: {actions}")
         logger.info(f"Evaluation reward: {reward_total}")
+
+        result.states = states
+        # self.save_animation(result, tensorboard_batch_number)
+
+    @log_process(logger, "saving evaluation animation")
+    def save_animation(self, result: Result, i: int):
+        bloch_animation = BlochAnimator([result], static_states=[self.env.target_state])
+        bloch_animation.generate_animation()
+        # TODO: Make work
+        # bloch_animation.show()
+        # bloch_animation.save(filename=f"evaluation_{i}.mp4")
 
 
 if __name__ == '__main__':
@@ -136,8 +152,8 @@ if __name__ == '__main__':
         HamiltonianData(-sigmaz()),
         HamiltonianData(sigmax(), placeholder_callback)
     ]
-    N = 40
-    t = 0.4
+    N = 60
+    t = 3
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
     model = DenseModel(inputs=2, outputs=2, learning_rate=3e-3)
@@ -150,4 +166,5 @@ if __name__ == '__main__':
         ),
         with_tensorboard=True
     )
-    trainer.train(render=True)
+    trainer.train(render=False, episodes=500)
+    logger.info(f"max reward total: {max(trainer.reward_totals)}")
