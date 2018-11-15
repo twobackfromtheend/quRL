@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import Sequence
 
@@ -8,6 +9,8 @@ from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
 from quantum_evolution.plotter.bloch_figure import BlochFigure
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
+
+logger = logging.getLogger(__name__)
 
 
 class QEnv2(BasePseudoEnv):
@@ -32,6 +35,7 @@ class QEnv2(BasePseudoEnv):
         self.current_step: int = 0
         self.current_h_x = None
         self.bloch_figure = None
+        logger.info(f"Created QEnv2 with N: {N}, t: {t}")
 
     def step(self, action: int):
         assert action == 0 or action == 1, 'Action has to be 0 or 1.'
