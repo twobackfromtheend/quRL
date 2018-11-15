@@ -3,6 +3,7 @@ from typing import List, Union, Callable, Sequence
 
 import numpy as np
 from qutip import *
+from qutip.solver import Result
 
 from logger_utils.logger_utils import log_process
 
@@ -36,10 +37,10 @@ class BaseSimulation:
         self.c_ops = [] if c_ops is None else c_ops
         self.e_ops = [] if e_ops is None else e_ops
 
-        self.result = None
+        self.result: Result = None
         self.options = Options(store_states=True)
 
-    @log_process(logger, 'solving')
+    # @log_process(logger, 'solving')
     def solve(self):
         self.result = mesolve(
             [hamiltonian_data.format_for_solver() for hamiltonian_data in self.hamiltonian],

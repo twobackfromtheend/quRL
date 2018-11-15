@@ -42,9 +42,8 @@ class QEnv1(BasePseudoEnv):
     def step(self, action):
         actions = self.convert_int_to_bit_list(action, self.N)
         self.simulation.solve_with_actions(actions, self.N)
-        self.result = self.simulation.result
 
-        self.current_state = self.result.states[-1]
+        self.current_state = self.simulation.result.states[-1]
 
         observation = self.get_state()
         reward = self.get_reward()
@@ -52,7 +51,7 @@ class QEnv1(BasePseudoEnv):
         return observation, reward, done, {}
 
     def render(self, mode='human'):
-        bloch_animation = BlochAnimator([self.result], static_states=[self.target_state])
+        bloch_animation = BlochAnimator([self.simulation.result], static_states=[self.target_state])
         bloch_animation.generate_animation()
         bloch_animation.show()
 

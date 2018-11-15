@@ -23,7 +23,6 @@ class BasePseudoEnv:
         self.target_state: Qobj = self.given_target_state \
             if self.given_target_state is not None else self.get_random_state()
         self.simulation: EnvSimulation = None
-        self.result: Result = None  # Should be set in the step() method of subclasses.
 
     def step(self, action) -> Tuple[np.ndarray, float, bool, object]:
         raise NotImplementedError
@@ -41,7 +40,6 @@ class BasePseudoEnv:
         self.current_state: Qobj = self.initial_state if self.initial_state is not None else self.get_random_state()
         self.target_state: Qobj = self.given_target_state \
             if self.given_target_state is not None else self.get_random_state()
-        self.result = None
         return self.get_state()
 
     def get_state(self) -> np.ndarray:
