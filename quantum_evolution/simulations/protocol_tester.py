@@ -16,10 +16,10 @@ def test_protocol(
         initial_state: Qobj,
         target_state: Qobj
 ):
-
     e_ops = [sigmax(), sigmay(), sigmaz()]
 
     h_list = get_h_list(protocol)
+    print(f"h_list: {h_list}")
 
     H1_coeff = get_H1_coeff(t, N, h_list)
 
@@ -28,7 +28,7 @@ def test_protocol(
     result = mesolve(
         [hamiltonian_data.format_for_solver() for hamiltonian_data in hamiltonian],
         initial_state,
-        tlist=np.linspace(0, t, N * 10),
+        tlist=np.linspace(0, t, N * 20),
         e_ops=e_ops,
         options=Options(store_states=True)
     )
@@ -54,7 +54,7 @@ def get_h_list(protocol: Sequence[int]) -> Sequence[int]:
 
 
 def get_H1_coeff(t: float, N: int, h_list: Sequence[int]) -> Callable:
-    t_list = np.linspace(0, t, N)
+    t_list = np.linspace(0, t, N + 1)
 
     def H1_coeff(t, args):
         if t < 0:
@@ -73,14 +73,14 @@ def plot_h(t: float, protocol: Sequence[int]):
     ax = plt.gca()
 
     h_list = get_h_list(protocol)
-    t_list = np.linspace(0, t, len(protocol))
+    t_list = np.linspace(0, t, len(protocol) + 1)[:-1]
     plt.plot(t_list, h_list, 'o')
 
     H1_coeff = get_H1_coeff(t, len(protocol), h_list)
-    t_list = np.linspace(0, t, len(protocol) * 10)
+    t_list = np.linspace(0, t, len(protocol) * 20)
     plt.plot(t_list, [-H1_coeff(t, None) for t in t_list], '-')
 
-    ax.set_xlim([0, 3.1])
+    ax.set_xlim([0, t * 1.1])
     ax.set_ylim([-4.2, 4.2])
     ax.yaxis.set_ticks(np.arange(-4, 4, 2))
     plt.show()
@@ -100,14 +100,29 @@ if __name__ == '__main__':
         HamiltonianData(sigmax(), placeholder_callback)
     ]
 
-    protocol = [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
-                0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1]
-    t = 3
-    N = 60
-    plot_h(t, protocol)
+    # protocol = [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
+    #             0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1]
+    # t = 3
+    # N = 60
+    # plot_h(t, protocol)
+    #
+    # test_protocol(
+    #     protocol,
+    #     hamiltonian,
+    #     t=t,
+    #     N=N,
+    #     initial_state=initial_state,
+    #     target_state=target_state
+    # )
+
+    protocol_05 = [0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+
+    t = 0.5
+    N = 10
+    plot_h(t, protocol_05)
 
     test_protocol(
-        protocol,
+        protocol_05,
         hamiltonian,
         t=t,
         N=N,
