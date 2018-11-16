@@ -19,6 +19,7 @@ class QEnv2Trainer(BaseTrainer):
                  with_tensorboard: bool):
         super().__init__(model, env, hyperparameters, with_tensorboard)
         self.evaluation_tensorboard = None
+        self.evaluation_rewards = []
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False, save_every: int = 500, evaluate_every: int = 50):
@@ -38,12 +39,8 @@ class QEnv2Trainer(BaseTrainer):
             actions = []
             done = False
             while not done:
-                if np.random.random() < exploration.current_value:
-                    action = self.env.get_random_action()
-                    logger.debug(f"action: {action} (randomly generated)")
-                else:
-                    action = int(np.argmax(self.get_q_values(observation)))
-                    logger.debug(f"action: {action} (argmaxed)")
+                action = self.get_action(observation, method="softmax")
+
                 actions.append(action)
                 new_observation, reward, done, info = self.env.step(action)
                 logger.debug(f"new_observation: {new_observation}")
@@ -90,6 +87,28 @@ class QEnv2Trainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
+    def get_action(self, observation, method="softmax"):
+        exploration = self.hyperparameters.exploration_options
+        if method == "exploration":
+
+            if np.random.random() < exploration.current_value:
+                action = self.env.get_random_action()
+                logger.debug(f"action: {action} (randomly generated)")
+            else:
+                action = int(np.argmax(self.get_q_values(observation)))
+                logger.debug(f"action: {action} (argmaxed)")
+            return action
+        elif method == "softmax":
+            q_values = self.get_q_values(observation)
+            # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
+            B_RL = (1 - exploration.current_value) / exploration.current_value
+            logger.info(f"q_values: {q_values}")
+            e_x = np.exp(B_RL * (q_values - np.max(q_values)))
+            probabilities = e_x / e_x.sum(axis=0)
+            action = int(np.random.choice([0, 1], p=probabilities))
+            logger.info(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
+            return action
+
     @log_process(logger, "saving model")
     def save_model(self):
         self.model.save_model(self.__class__.__name__)
@@ -118,6 +137,7 @@ class QEnv2Trainer(BaseTrainer):
             tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
         logger.info(f"actions: {actions}")
         logger.info(f"Evaluation reward: {reward_total}")
+        self.evaluation_rewards.append(reward_total)
 
         result.states = states
         # self.save_animation(result, tensorboard_batch_number)
@@ -156,15 +176,17 @@ if __name__ == '__main__':
     t = 3
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
-    model = DenseModel(inputs=2, outputs=2, learning_rate=3e-3)
+    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-4)
 
     trainer = QEnv2Trainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            0.95,
-            ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56%.
+            0.98,
+            # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56%.
+            ExplorationOptions(0.8, 0.992, min_value=0.001)  # B_RL = 999
         ),
         with_tensorboard=True
     )
-    trainer.train(render=False, episodes=500)
+    trainer.train(render=False, episodes=1000)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
+    logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")
