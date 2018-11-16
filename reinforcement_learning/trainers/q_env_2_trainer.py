@@ -10,6 +10,7 @@ from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions
+from reinforcement_learning.trainers.replay_handler import ReplayHandler
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,13 @@ class QEnv2Trainer(BaseTrainer):
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
 
+        self.replay_handler = ReplayHandler()
+
     @log_process(logger, 'training')
-    def train(self, episodes: int = 1000, render: bool = False, save_every: int = 500, evaluate_every: int = 50):
+    def train(self, episodes: int = 1000, render: bool = False,
+              save_every: int = 500,
+              evaluate_every: int = 50,
+              replay_every: int = 40):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
 
@@ -74,10 +80,15 @@ class QEnv2Trainer(BaseTrainer):
 
             reward_totals.append(reward_total)
 
+            self.replay_handler.record_protocol(actions, reward_total)
+
             if i % evaluate_every == evaluate_every - 1:
                 self.evaluate_model(render, i // evaluate_every)
             if i % save_every == save_every - 1:
                 self.save_model()
+
+            if i % replay_every == replay_every - 1:
+                self.replay_trainer(render)
 
         self.reward_totals = reward_totals
 
@@ -90,7 +101,6 @@ class QEnv2Trainer(BaseTrainer):
     def get_action(self, observation, method="softmax"):
         exploration = self.hyperparameters.exploration_options
         if method == "exploration":
-
             if np.random.random() < exploration.current_value:
                 action = self.env.get_random_action()
                 logger.debug(f"action: {action} (randomly generated)")
@@ -108,6 +118,27 @@ class QEnv2Trainer(BaseTrainer):
             action = int(np.random.choice([0, 1], p=probabilities))
             logger.info(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
             return action
+
+    def replay_trainer(self, render: bool):
+        gamma = self.hyperparameters.decay_rate
+
+        for protocol in self.replay_handler.generator():
+            logger.info(f"replay with protocol: {protocol}")
+            observation = self.env.reset()
+            reward_total = 0
+            for action in protocol:
+                new_observation, reward, done, info = self.env.step(action)
+                target = reward + gamma * np.max(self.get_q_values(new_observation))
+                target_vec = self.get_q_values(observation)
+                target_vec[action] = target
+                loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+                if render:
+                    self.env.render()
+                observation = new_observation
+
+                reward_total += reward
+
+            logger.info(f"replay reward: {reward_total}")
 
     @log_process(logger, "saving model")
     def save_model(self):
