@@ -107,8 +107,10 @@ class QEnv2Trainer(BaseTrainer):
             target = reward + gamma * np.max(self.get_q_values(new_observation))
         logger.debug(f"target: {target}")
         target_vec = self.get_q_values(observation)
-        logger.debug(f"target_vec: {target_vec}")
+        logger.debug(f"original_target_vec: {target_vec}")
+        # print(target_vec, target, action)
         target_vec[action] = target
+        logger.debug(f"target_vec: {target_vec}")
         loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
         return loss
 
@@ -136,11 +138,11 @@ class QEnv2Trainer(BaseTrainer):
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
             B_RL = (1 - exploration.current_value) / exploration.current_value
-            logger.debug(f"q_values: {q_values}")
+            logger.info(f"q_values: {q_values}")
             e_x = np.exp(B_RL * (q_values - np.max(q_values)))
             probabilities = e_x / e_x.sum(axis=0)
             action = int(np.random.choice([0, 1], p=probabilities))
-            logger.debug(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
+            logger.info(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
             return action
         else:
             raise ValueError(f"Unknown exploration method: {exploration.method}")
@@ -173,16 +175,16 @@ class QEnv2Trainer(BaseTrainer):
         reward_total = 0
         observation = self.env.reset()
         actions = []
-        states = []
-        result: Result = None  # Instantiate here to avoid linting bringing up that it might not exist below.
+        # states = []
+        # result: Result = None  # Instantiate here to avoid linting bringing up that it might not exist below.
         while not done:
             action = int(np.argmax(self.get_q_values(observation)))
             actions.append(action)
             new_observation, reward, done, info = self.env.step(action)
 
             observation = new_observation
-            result = self.env.simulation.result
-            states += result.states
+            # result = self.env.simulation.result
+            # states += result.states
             reward_total += reward
             if render:
                 self.env.render()
@@ -192,7 +194,7 @@ class QEnv2Trainer(BaseTrainer):
         logger.info(f"Evaluation reward: {reward_total}")
         self.evaluation_rewards.append(reward_total)
 
-        result.states = states
+        # result.states = states
         # self.save_animation(result, tensorboard_batch_number)
 
     @log_process(logger, "saving evaluation animation")
