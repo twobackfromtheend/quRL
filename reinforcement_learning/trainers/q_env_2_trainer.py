@@ -218,7 +218,8 @@ if __name__ == '__main__':
     t = 3
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
-    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-4)
+    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-2,
+                       inner_activation='sigmoid', output_activation='sigmoid')
 
     trainer = QEnv2Trainer(
         model, env,
