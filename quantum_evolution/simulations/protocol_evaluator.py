@@ -16,6 +16,9 @@ def evaluate_protocol(
         initial_state: Qobj,
         target_state: Qobj
 ):
+    # Normalise units
+    t = t / 2
+
     e_ops = [sigmax(), sigmay(), sigmaz()]
 
     h_list = get_h_list(protocol)
