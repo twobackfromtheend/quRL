@@ -1,8 +1,10 @@
 import logging
+import math
 from typing import List
 
 import numpy as np
 from qutip.solver import Result
+from tensorflow.python.keras import backend as K
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
@@ -10,7 +12,8 @@ from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions
+from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
+    ExplorationMethod
 from reinforcement_learning.trainers.replay_handler import ReplayHandler
 
 logger = logging.getLogger(__name__)
@@ -45,7 +48,7 @@ class QEnv2Trainer(BaseTrainer):
             actions = []
             done = False
             while not done:
-                action = self.get_action(observation, method="softmax")
+                action = self.get_action(observation)
 
                 actions.append(action)
                 new_observation, reward, done, info = self.env.step(action)
@@ -113,17 +116,21 @@ class QEnv2Trainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
-    def get_action(self, observation, method="softmax"):
+    def get_action(self, observation):
         exploration = self.hyperparameters.exploration_options
-        if method == "exploration":
+        if exploration.method == ExplorationMethod.EPSILON:
             if np.random.random() < exploration.current_value:
-                action = self.env.get_random_action()
+                try:
+                    action = self.env.get_random_action()
+                except AttributeError:
+                    # Gym env.
+                    action = self.env.action_space.sample()
                 logger.debug(f"action: {action} (randomly generated)")
             else:
                 action = int(np.argmax(self.get_q_values(observation)))
                 logger.debug(f"action: {action} (argmaxed)")
             return action
-        elif method == "softmax":
+        elif exploration.method == ExplorationMethod.SOFTMAX:
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
             B_RL = (1 - exploration.current_value) / exploration.current_value
@@ -133,6 +140,8 @@ class QEnv2Trainer(BaseTrainer):
             action = int(np.random.choice([0, 1], p=probabilities))
             logger.debug(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
             return action
+        else:
+            raise ValueError(f"Unknown exploration method: {exploration.method}")
 
     def replay_trainer(self, render: bool):
         for protocol in self.replay_handler.generator():
@@ -214,8 +223,8 @@ if __name__ == '__main__':
         HamiltonianData(-sigmaz()),
         HamiltonianData(-sigmax(), placeholder_callback)
     ]
-    N = 60
-    t = 3
+    N = 10
+    t = 0.5
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
     model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-2,

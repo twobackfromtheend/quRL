@@ -1,10 +1,17 @@
 import logging
+from enum import Enum, auto
 
 logger = logging.getLogger(__name__)
 
 
+class ExplorationMethod(Enum):
+    SOFTMAX = auto()
+    EPSILON = auto()
+
+
 class ExplorationOptions:
-    def __init__(self, starting_value: float = 0.5, decay: float = 0.998, min_value: float = 0.1):
+    def __init__(self, starting_value: float = 0.5, decay: float = 0.998, min_value: float = 0.1,
+                 method: ExplorationMethod = ExplorationMethod.SOFTMAX):
         """
         Defines exploration rate, the rate at which an agent randomly decides its action instead of being greedy.
         :param starting_value: initial exploration rate, default: 0.8
@@ -17,6 +24,7 @@ class ExplorationOptions:
         self.current_value = starting_value
         self.min_value = min_value
         self.decay = decay
+        self.method = method
 
     def decay_current_value(self):
         self.current_value = max(self.min_value, self.current_value * self.decay)
