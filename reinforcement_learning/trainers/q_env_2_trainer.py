@@ -43,6 +43,8 @@ class QEnv2Trainer(BaseTrainer):
             observation = self.env.reset()
             exploration.decay_current_value()
             logger.info(f"exploration: {exploration.current_value}")
+            self.update_learning_rate(i)
+
             reward_total = 0
             losses = []
             actions = []
@@ -200,6 +202,17 @@ class QEnv2Trainer(BaseTrainer):
         # TODO: Make work
         # bloch_animation.show()
         # bloch_animation.save(filename=f"evaluation_{i}.mp4")
+
+    def update_learning_rate(self, i: int):
+        current_learning_rate = float(K.get_value(self.model.model.optimizer.lr))
+        logger.info(f"learning rate: {current_learning_rate}")
+        new_learning_rate = self.get_learning_rate(i)
+        K.set_value(self.model.model.optimizer.lr, new_learning_rate)
+
+    @staticmethod
+    def get_learning_rate(i: int) -> float:
+        # return 8e-3
+        return ((math.cos(i / 100) + 1.000) / 2 * 3 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
 
 if __name__ == '__main__':
