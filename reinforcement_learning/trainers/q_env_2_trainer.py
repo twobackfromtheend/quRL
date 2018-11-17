@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 import numpy as np
 from qutip.solver import Result
@@ -30,13 +31,12 @@ class QEnv2Trainer(BaseTrainer):
               evaluate_every: int = 50,
               replay_every: int = 40):
         exploration = self.hyperparameters.exploration_options
-        gamma = self.hyperparameters.decay_rate
 
         if self.tensorboard:
             self.tensorboard = create_callback(self.model.model)
         reward_totals = []
         for i in range(episodes):
-            logger.info(f"Episode {i}/{episodes}")
+            logger.info(f"\nEpisode {i}/{episodes}")
             observation = self.env.reset()
             exploration.decay_current_value()
             logger.info(f"exploration: {exploration.current_value}")
@@ -51,13 +51,7 @@ class QEnv2Trainer(BaseTrainer):
                 new_observation, reward, done, info = self.env.step(action)
                 logger.debug(f"new_observation: {new_observation}")
 
-                target = reward + gamma * np.max(self.get_q_values(new_observation))
-                logger.debug(f"target: {target}")
-                target_vec = self.get_q_values(observation)
-                logger.debug(f"target_vec: {target_vec}")
-                target_vec[action] = target
-
-                loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+                loss = self.train_on_step(observation, action, new_observation, reward, done)
                 logger.debug(f"loss: {loss}")
                 losses.append(loss)
 
@@ -92,6 +86,27 @@ class QEnv2Trainer(BaseTrainer):
 
         self.reward_totals = reward_totals
 
+    def train_on_step(self, observation, action: int, new_observation, reward: float, done: bool) -> List[float]:
+        """
+        Trains model on a single step.
+        :param observation:
+        :param action:
+        :param new_observation:
+        :param reward:
+        :return: train_loss, train_mae (List[float])
+        """
+        if done:
+            target = reward
+        else:
+            gamma = self.hyperparameters.decay_rate
+            target = reward + gamma * np.max(self.get_q_values(new_observation))
+        logger.debug(f"target: {target}")
+        target_vec = self.get_q_values(observation)
+        logger.debug(f"target_vec: {target_vec}")
+        target_vec[action] = target
+        loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+        return loss
+
     def get_q_values(self, state) -> np.ndarray:
         logger.debug("Get Q values")
         q_values = self.model.model.predict(state.reshape((1, -1)))
@@ -112,26 +127,21 @@ class QEnv2Trainer(BaseTrainer):
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
             B_RL = (1 - exploration.current_value) / exploration.current_value
-            logger.info(f"q_values: {q_values}")
+            logger.debug(f"q_values: {q_values}")
             e_x = np.exp(B_RL * (q_values - np.max(q_values)))
             probabilities = e_x / e_x.sum(axis=0)
             action = int(np.random.choice([0, 1], p=probabilities))
-            logger.info(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
+            logger.debug(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
             return action
 
     def replay_trainer(self, render: bool):
-        gamma = self.hyperparameters.decay_rate
-
         for protocol in self.replay_handler.generator():
             logger.info(f"replay with protocol: {protocol}")
             observation = self.env.reset()
             reward_total = 0
             for action in protocol:
                 new_observation, reward, done, info = self.env.step(action)
-                target = reward + gamma * np.max(self.get_q_values(new_observation))
-                target_vec = self.get_q_values(observation)
-                target_vec[action] = target
-                loss = self.model.model.train_on_batch(observation.reshape((1, -1)), target_vec.reshape((1, -1)))
+                loss = self.train_on_step(observation, action, new_observation, reward, done)
                 if render:
                     self.env.render()
                 observation = new_observation
@@ -153,6 +163,7 @@ class QEnv2Trainer(BaseTrainer):
         observation = self.env.reset()
         actions = []
         states = []
+        result: Result = None  # Instantiate here to avoid linting bringing up that it might not exist below.
         while not done:
             action = int(np.argmax(self.get_q_values(observation)))
             actions.append(action)
@@ -213,7 +224,7 @@ if __name__ == '__main__':
         model, env,
         hyperparameters=QLearningHyperparameters(
             0.98,
-            # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56%.
+            # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56% for N = 40?.
             ExplorationOptions(0.8, 0.992, min_value=0.001)  # B_RL = 999
         ),
         with_tensorboard=True

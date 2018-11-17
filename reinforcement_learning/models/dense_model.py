@@ -15,7 +15,7 @@ class DenseModel(BaseModel):
     def __init__(self, inputs: int, outputs: int,
                  layer_nodes: Sequence[int] = (24, 24),
                  inner_activation=tf.nn.relu, output_activation='linear',
-                 regularizer=keras.regularizers.l2(0.01),
+                 regularizer=keras.regularizers.l2(0.001),
                  learning_rate=0.003):
         logger.info(f'Creating DenseModel with {inputs} inputs and {outputs} outputs.')
         self.inputs = inputs
