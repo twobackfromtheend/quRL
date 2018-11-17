@@ -158,8 +158,6 @@ if __name__ == '__main__':
     t = 0.5
     N = 10
     plot_h(t, protocol_05)
-    # x = initial_state * 1 / initial_state.get_data()[1][0].toarray()[0][0].real
-    # y = target_state * 1 / target_state.get_data()[1][0].toarray()[0][0].real
     evaluate_protocol(
         protocol_05,
         hamiltonian,
