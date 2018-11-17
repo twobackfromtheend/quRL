@@ -30,8 +30,8 @@ class QEnv2(BasePseudoEnv):
         self.hamiltonian = hamiltonian
         self.initial_h_x = initial_h_x
         self.N = N
-        self.t = t
-        self.dt = t / N
+        self.t = t / 2  # Normalisation with units.
+        self.dt = self.t / N
         self.current_step: int = 0
         self.current_h_x = None
         self.bloch_figure = None

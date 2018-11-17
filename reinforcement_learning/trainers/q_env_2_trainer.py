@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
     hamiltonian_datas = [
         HamiltonianData(-sigmaz()),
-        HamiltonianData(sigmax(), placeholder_callback)
+        HamiltonianData(-sigmax(), placeholder_callback)
     ]
     N = 60
     t = 3
