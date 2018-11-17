@@ -121,14 +121,16 @@ if __name__ == '__main__':
         HamiltonianData(-sigmax(), placeholder_callback)
     ]
 
-    protocol = [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
-                0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1]
+    # Test with protocol with length 3.0 - expected fidelity 1.000
+    protocol_30 = [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                   0,
+                   0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0]
     t = 3
     N = 60
-    plot_h(t, protocol)
+    plot_h(t, protocol_30)
 
     evaluate_protocol(
-        protocol,
+        protocol_30,
         hamiltonian,
         t=t,
         N=N,
@@ -136,6 +138,22 @@ if __name__ == '__main__':
         target_state=target_state
     )
 
+    # Test with protocol with length 1.0 - expected fidelity 0.576
+    protocol_10 = [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+    t = 1
+    N = 20
+    plot_h(t, protocol_10)
+
+    evaluate_protocol(
+        protocol_10,
+        hamiltonian,
+        t=t,
+        N=N,
+        initial_state=initial_state,
+        target_state=target_state
+    )
+
+    # Test with protocol with length 0.5 - expected fidelity 0.331
     protocol_05 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0]
 
     t = 0.5
