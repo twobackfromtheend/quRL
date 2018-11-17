@@ -63,7 +63,7 @@ class QEnv2(BasePseudoEnv):
             return 0
 
         _fidelity = fidelity(self.current_state, self.target_state)
-        return _fidelity - 0.5
+        return _fidelity ** 2  # As per paper's definition of fidelity.
 
     def reset(self) -> np.ndarray:
         if self.bloch_figure is not None:
