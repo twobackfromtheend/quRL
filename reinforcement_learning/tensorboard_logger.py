@@ -27,7 +27,10 @@ def tf_log(callback: TensorBoard, names: List[str], logs: List[float], batch_no:
 
 
 def create_callback(model) -> TensorBoard:
-    i = find_max_run_number() + 1
+    try:
+        i = find_max_run_number() + 1
+    except FileNotFoundError:
+        i = 0
     _log_path = os.path.join(log_path, f"{FOLDER_PREFIX}_{i}")
     pathlib.Path(_log_path).mkdir(parents=True, exist_ok=True)
     callback = TensorBoard(_log_path)
