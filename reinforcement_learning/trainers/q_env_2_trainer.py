@@ -102,6 +102,7 @@ class QEnv2Trainer(BaseTrainer):
         """
         if done:
             target = reward
+            # target = -100  # ONLY FOR CARTPOLE
         else:
             gamma = self.hyperparameters.decay_rate
             target = reward + gamma * np.max(self.get_q_values(new_observation))
@@ -160,6 +161,9 @@ class QEnv2Trainer(BaseTrainer):
                 observation = new_observation
 
                 reward_total += reward
+
+                if done:
+                    break
 
             logger.info(f"replay reward: {reward_total}")
 
@@ -242,18 +246,28 @@ if __name__ == '__main__':
     t = 0.5
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
-    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-2,
-                       inner_activation='sigmoid', output_activation='sigmoid')
+    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+                       inner_activation='relu', output_activation='linear')
+
+    # RUN FOR CARTPOLE
+    # Uncomment the target above in train_on_step()
+    # import gym
+    # env = gym.make('CartPole-v0')
+    # model = DenseModel(inputs=4, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+    #                    inner_activation='relu', output_activation='linear')
 
     trainer = QEnv2Trainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            0.98,
+            0.95,
             # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56% for N = 40?.
-            ExplorationOptions(0.8, 0.992, min_value=0.001)  # B_RL = 999
+            # ExplorationOptions(0.8, 0.995, min_value=0.04, method=ExplorationMethod.EPSILON)
+            ExplorationOptions(0.5, 0.992, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
+            # https://www.wolframalpha.com/input/?i=EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex))+%2F+(1+%2B+EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex)))++for+x+from+0+to+1000
+            # For Q-values of 0.4 and 0.6, 0.04 will give 0.8%
         ),
         with_tensorboard=True
     )
-    trainer.train(render=False, episodes=1000)
+    trainer.train(render=True, episodes=1000)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")
