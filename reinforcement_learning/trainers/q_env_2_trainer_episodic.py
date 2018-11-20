@@ -1,6 +1,5 @@
 import logging
-import math
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 from qutip.solver import Result
@@ -14,7 +13,8 @@ from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
-from reinforcement_learning.trainers.replay_handler import ReplayHandler
+from reinforcement_learning.trainers.replay_handlers.base_replay_handler import BaseReplayHandler
+from reinforcement_learning.trainers.replay_handlers.exclusive_best_replay_handler import ExclusiveBestReplayHandler
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,12 @@ class QEnv2TrainerEpisodic(BaseTrainer):
         super().__init__(model, env, hyperparameters, with_tensorboard)
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
-        self.replay_handler = ReplayHandler()
+        self.replay_handler = ExclusiveBestReplayHandler()
         self.episodic_data = EpisodicData()
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False,
-              save_every: int = 500,
+              save_every: int = 500000,
               evaluate_every: int = 50,
               replay_every: int = 40):
         exploration = self.hyperparameters.exploration_options
@@ -68,7 +68,7 @@ class QEnv2TrainerEpisodic(BaseTrainer):
 
             self.episodic_data.reset()
             exploration.decay_current_value()
-            logger.info(f"exploration: {exploration.current_value}")
+            logger.info(f"exploration: {exploration.current_value} (B_RL: {self.get_B_RL(exploration.current_value)})")
             self.update_learning_rate(i)
 
             reward_total = 0
@@ -113,28 +113,6 @@ class QEnv2TrainerEpisodic(BaseTrainer):
 
     def step(self, action):
         new_state, reward, done, info = self.env.step(action)
-        # For Acrobot
-        global _acrobot_step_number
-        try:
-            if _acrobot_step_number == 250:
-                done = True
-                _acrobot_step_number = 0
-            else:
-                done = False
-                _acrobot_step_number += 1
-        except NameError:
-            _acrobot_step_number = 0
-            done = False
-        if done:
-            s = self.env.unwrapped.state
-            reward = -np.cos(s[0]) - np.cos(s[1] + s[0])
-            print(reward)
-        else:
-            reward = 0
-        # For CartPole
-        # if done:
-        #     reward = -100
-
         return new_state, reward, done, info
 
     def record_step_data(self, state, action: int, new_state, reward: float, done: bool):
@@ -164,11 +142,7 @@ class QEnv2TrainerEpisodic(BaseTrainer):
         exploration = self.hyperparameters.exploration_options
         if exploration.method == ExplorationMethod.EPSILON:
             if np.random.random() < exploration.current_value:
-                try:
-                    action = self.env.get_random_action()
-                except AttributeError:
-                    # Gym env.
-                    action = self.env.action_space.sample()
+                action = self.env.get_random_action()
                 logging_level(f"action: {action} (randomly generated)")
             else:
                 action = int(np.argmax(self.get_q_values(observation)))
@@ -177,15 +151,20 @@ class QEnv2TrainerEpisodic(BaseTrainer):
         elif exploration.method == ExplorationMethod.SOFTMAX:
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
-            B_RL = (1 - exploration.current_value) / exploration.current_value
+            B_RL = self.get_B_RL(exploration.current_value)
             logging_level(f"q_values: {q_values}")
             e_x = np.exp(B_RL * (q_values - np.max(q_values)))
             probabilities = e_x / e_x.sum(axis=0)
-            action = int(np.random.choice([0, 1, 2], p=probabilities))
+            action = int(np.random.choice([_i for _i in range(len(probabilities))], p=probabilities))
             logging_level(f"action: {action} (softmaxed from {probabilities} with B_RL: {B_RL})")
             return action
         else:
             raise ValueError(f"Unknown exploration method: {exploration.method}")
+
+    @staticmethod
+    def get_B_RL(exploration: float) -> float:
+        return 1
+        # return (1 - exploration) / exploration
 
     def replay_trainer(self, render: bool):
         for protocol in self.replay_handler.generator():
@@ -258,9 +237,9 @@ class QEnv2TrainerEpisodic(BaseTrainer):
 
     @staticmethod
     def get_learning_rate(i: int) -> float:
-        # return 3e-6
-        # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+3+*+10+%5E+-3)+*+exp(+-(x+%2F+1000))+%2B+3+*+10+%5E+-5+for+x+from+0+to+1000
-        return ((math.cos(i / 100) + 1.000) / 2 * 3 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
+        return 3e-3
+        # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+6+*+10%5E-3)+*+exp(-(x+%2F+1000))+%2B+3+*+10%5E-5+for+x+from+0+to+3000
+        # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
 
 if __name__ == '__main__':
@@ -284,33 +263,26 @@ if __name__ == '__main__':
         HamiltonianData(-sigmaz()),
         HamiltonianData(-sigmax(), placeholder_callback)
     ]
-    N = 10
-    t = 0.5
+    # N = 10
+    # t = 0.5
+    N = 60
+    t = 3
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
-    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+    model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48, 24), learning_rate=3e-3,
                        inner_activation='relu', output_activation='linear')
 
     # RUN FOR CARTPOLE
-    # Uncomment the target above in train_on_step()
-    # import gym
-    # env = gym.make('CartPole-v0')
-    # model = DenseModel(inputs=4, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+    # from reinforcement_learning.envs.cartpole_env import CartPoleTSEnv
+    # env = CartPoleTSEnv()
+    # model = DenseModel(inputs=5, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')
 
-    # RUN FOR PENDULUM
-    # Uncomment the target above in train_on_step()
-    import gym
-
-    gym.envs.register(
-        id='AcrobotFixedTime-v0',
-        entry_point='gym.envs.classic_control:AcrobotEnv',
-        max_episode_steps=250,
-        reward_threshold=-110.0,
-    )
-    env = gym.make('AcrobotFixedTime-v0')
-    model = DenseModel(inputs=6, outputs=3, layer_nodes=(48, 48), learning_rate=3e-3,
-                       inner_activation='relu', output_activation='linear')
+    # RUN FOR ACROBOT
+    # from reinforcement_learning.envs.acrobot_env import AcrobotTSEnv
+    # env = AcrobotTSEnv(sparse=True)
+    # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
+    #                    inner_activation='relu', output_activation='linear')
 
     trainer = QEnv2TrainerEpisodic(
         model, env,
@@ -318,12 +290,12 @@ if __name__ == '__main__':
             0.95,
             # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56% for N = 40?.
             # ExplorationOptions(0.8, 0.995, min_value=0.04, method=ExplorationMethod.EPSILON)
-            ExplorationOptions(0.5, 0.996, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
+            ExplorationOptions(1, 0.996, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
             # https://www.wolframalpha.com/input/?i=EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex))+%2F+(1+%2B+EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex)))++for+x+from+0+to+1000
             # For Q-values of 0.4 and 0.6, 0.04 will give 0.8%
         ),
         with_tensorboard=True
     )
-    trainer.train(render=False, episodes=3000)
+    trainer.train(render=False, episodes=50000, replay_every=40)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")

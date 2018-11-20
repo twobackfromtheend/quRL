@@ -4,8 +4,16 @@ from typing import Sequence
 import numpy as np
 
 
-class ReplayHandler:
-
+class EpochReplayHandler:
+    """
+    Stores the last `count` replays in memory,
+    each replay provides the best among the first `i` replays in memory.
+    ie:
+    i = 0: replays first protocol
+    i = 1: replays first or second protocol, whichever is better
+    i = 2: replays first or second or third protocol, whichever is best
+    etc.
+    """
     def __init__(self, count: int = 40):
         self.count = count
         self.protocols = deque(maxlen=count)
