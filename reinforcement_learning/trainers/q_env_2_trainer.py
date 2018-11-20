@@ -1,5 +1,4 @@
 import logging
-import math
 from typing import List
 
 import numpy as np
@@ -14,7 +13,7 @@ from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
-from reinforcement_learning.trainers.replay_handler import ReplayHandler
+from reinforcement_learning.trainers.replay_handlers.epoch_replay_handler import EpochReplayHandler
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class QEnv2Trainer(BaseTrainer):
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
 
-        self.replay_handler = ReplayHandler()
+        self.replay_handler = EpochReplayHandler()
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False,
@@ -217,8 +216,9 @@ class QEnv2Trainer(BaseTrainer):
 
     @staticmethod
     def get_learning_rate(i: int) -> float:
-        # return 8e-3
-        return ((math.cos(i / 100) + 1.000) / 2 * 3 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
+        return 3e-3
+        # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+3+*+10+%5E+-3)+*+exp(+-(x+%2F+1000))+%2B+3+*+10+%5E+-5+for+x+from+0+to+1000
+        # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
 
 if __name__ == '__main__':
@@ -262,12 +262,12 @@ if __name__ == '__main__':
             0.95,
             # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56% for N = 40?.
             # ExplorationOptions(0.8, 0.995, min_value=0.04, method=ExplorationMethod.EPSILON)
-            ExplorationOptions(0.5, 0.992, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
+            ExplorationOptions(0.5, 0.996, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
             # https://www.wolframalpha.com/input/?i=EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex))+%2F+(1+%2B+EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex)))++for+x+from+0+to+1000
             # For Q-values of 0.4 and 0.6, 0.04 will give 0.8%
         ),
         with_tensorboard=True
     )
-    trainer.train(render=True, episodes=1000)
+    trainer.train(render=False, episodes=3000)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")
