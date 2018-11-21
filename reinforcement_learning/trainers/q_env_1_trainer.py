@@ -3,7 +3,7 @@ import logging
 import numpy as np
 
 from logger_utils.logger_utils import log_process
-from reinforcement_learning.tensorboard_logger import tf_log
+from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
 
 logger = logging.getLogger(__name__)
@@ -14,17 +14,19 @@ class QEnv1Trainer(BaseTrainer):
     def train(self, episodes: int = 1000, render: bool = False):
         exploration = self.hyperparameters.exploration_options
         gamma = self.hyperparameters.decay_rate
+        if self.tensorboard:
+            self.tensorboard = create_callback(self.model.model)
 
         reward_totals = []
         for i in range(episodes):
             logger.info(f"Episode {i}/{episodes}")
             observation = self.env.reset()
-            exploration.decay_current_value()
-            logger.info(f"exploration: {exploration.current_value}")
+            epsilon = exploration.get_epsilon(i)
+            logger.info(f"exploration: {epsilon}")
 
             action = int(np.argmax(self.get_q_values(observation)))
             logger.debug(f"original action  : {self.env.convert_int_to_bit_list(action, self.env.N)}")
-            action = self.env.randomise_action(action, exploration.current_value)
+            action = self.env.randomise_action(action, epsilon)
             logger.debug(f"randomised action: {self.env.convert_int_to_bit_list(action, self.env.N)}")
 
             new_observation, reward, done, info = self.env.step(action)

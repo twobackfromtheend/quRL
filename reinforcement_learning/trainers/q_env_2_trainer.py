@@ -40,8 +40,7 @@ class QEnv2Trainer(BaseTrainer):
         for i in range(episodes):
             logger.info(f"\nEpisode {i}/{episodes}")
             observation = self.env.reset()
-            exploration.decay_current_value()
-            logger.info(f"exploration: {exploration.current_value}")
+            logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
             self.update_learning_rate(i)
 
             reward_total = 0
@@ -49,7 +48,7 @@ class QEnv2Trainer(BaseTrainer):
             actions = []
             done = False
             while not done:
-                action = self.get_action(observation)
+                action = self.get_action(observation, i)
 
                 actions.append(action)
                 new_observation, reward, done, info = self.env.step(action)
@@ -120,10 +119,10 @@ class QEnv2Trainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
-    def get_action(self, observation):
+    def get_action(self, observation, i: int):
         exploration = self.hyperparameters.exploration_options
         if exploration.method == ExplorationMethod.EPSILON:
-            if np.random.random() < exploration.current_value:
+            if np.random.random() < exploration.get_epsilon(i):
                 try:
                     action = self.env.get_random_action()
                 except AttributeError:
@@ -137,7 +136,7 @@ class QEnv2Trainer(BaseTrainer):
         elif exploration.method == ExplorationMethod.SOFTMAX:
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
-            B_RL = (1 - exploration.current_value) / exploration.current_value
+            B_RL = exploration.get_B_RL(i)
             logger.info(f"q_values: {q_values}")
             e_x = np.exp(B_RL * (q_values - np.max(q_values)))
             probabilities = e_x / e_x.sum(axis=0)
@@ -256,18 +255,16 @@ if __name__ == '__main__':
     # model = DenseModel(inputs=4, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')
 
+    EPISODES = 3000
     trainer = QEnv2Trainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
             0.95,
-            # ExplorationOptions(0.8, 0.992, min_value=0.04)  # Prob. of at least 1 randomised is 56% for N = 40?.
-            # ExplorationOptions(0.8, 0.995, min_value=0.04, method=ExplorationMethod.EPSILON)
-            ExplorationOptions(0.5, 0.996, min_value=0.04, method=ExplorationMethod.SOFTMAX)  # B_RL = 999
-            # https://www.wolframalpha.com/input/?i=EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex))+%2F+(1+%2B+EXP(-0.2+*+(1+-+0.8*0.992%5Ex)+%2F+(0.8*0.992%5Ex)))++for+x+from+0+to+1000
-            # For Q-values of 0.4 and 0.6, 0.04 will give 0.8%
+            # ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.8, epsilon_decay=0.998)
+            ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),
         with_tensorboard=True
     )
-    trainer.train(render=False, episodes=3000)
+    trainer.train(render=False, episodes=EPISODES)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")
