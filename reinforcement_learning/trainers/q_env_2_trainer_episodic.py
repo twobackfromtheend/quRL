@@ -293,12 +293,12 @@ if __name__ == '__main__':
     # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')
 
-    EPISODES = 5000
+    EPISODES = 10000
     trainer = QEnv2TrainerEpisodic(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            1,
-            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.8, epsilon_decay=0.998)
+            0.95,
+            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.8, epsilon_decay=0.999)
             # ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),
         with_tensorboard=True
