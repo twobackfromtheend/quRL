@@ -5,7 +5,7 @@ from reinforcement_learning.envs.base_env import BaseTimeSensitiveEnv
 
 class CartPoleTSEnv(BaseTimeSensitiveEnv):
 
-    def __init__(self, max_episode_steps: int = 200):
+    def __init__(self, max_episode_steps: int = 200, time_sensitive: bool = True):
         super().__init__(max_episode_steps)
 
         gym.envs.register(
@@ -15,6 +15,10 @@ class CartPoleTSEnv(BaseTimeSensitiveEnv):
         )
         self.env = gym.make('CartPoleTimeSensitive-v0')
 
+        if not time_sensitive:
+            self.step = self.vanilla_step
+            self.reset = self.vanilla_reset
+
     def step(self, action):
         new_state, reward, done, info = self.env.step(action)
         _ = self.increment_step_number()  # Ignore done-ness returned - it only returns True if on last stage.
@@ -23,11 +27,11 @@ class CartPoleTSEnv(BaseTimeSensitiveEnv):
             reward = 0
         return self.get_observation(new_state), reward, done, info
 
-    # def step(self, action):
-    #     new_state, reward, done, info = self.env.step(action)
-    #     if done:
-    #         reward = 0
-    #     return new_state, reward, done, info
-    #
-    # def reset(self, *args, **kwargs):
-    #     return self.env.reset(*args, **kwargs)
+    def vanilla_step(self, action):
+        new_state, reward, done, info = self.env.step(action)
+        if done:
+            reward = 0
+        return new_state, reward, done, info
+
+    def vanilla_reset(self, *args, **kwargs):
+        return self.env.reset(*args, **kwargs)

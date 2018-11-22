@@ -285,10 +285,12 @@ if __name__ == '__main__':
                        inner_activation='relu', output_activation='linear')
 
     # RUN FOR CARTPOLE
-    # from reinforcement_learning.envs.cartpole_env import CartPoleTSEnv
-    # env = CartPoleTSEnv()
-    # model = DenseModel(inputs=5, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
+    from reinforcement_learning.envs.cartpole_env import CartPoleTSEnv
+    time_sensitive = False
+    env = CartPoleTSEnv(time_sensitive=time_sensitive)
+    inputs = 5 if time_sensitive else 4
+    model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+                       inner_activation='relu', output_activation='linear')
 
     # RUN FOR ACROBOT
     # from reinforcement_learning.envs.acrobot_env import AcrobotTSEnv
