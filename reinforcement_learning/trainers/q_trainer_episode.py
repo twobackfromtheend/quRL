@@ -53,6 +53,7 @@ class QTrainerEpisode(BaseTrainer):
         self.evaluation_rewards = []
         self.replay_handler = ExclusiveBestReplayHandler()
         self.episodic_data = EpisodicData()
+        self.episode_number: int = None
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000, render: bool = False,
@@ -65,6 +66,7 @@ class QTrainerEpisode(BaseTrainer):
             self.tensorboard = create_callback(self.model.model)
         reward_totals = []
         for i in range(episodes):
+            self.episode_number = i
             logger.info(f"\nEpisode {i}/{episodes}")
             observation = self.env.reset()
 
@@ -77,7 +79,7 @@ class QTrainerEpisode(BaseTrainer):
             done = False
 
             while not done:
-                action = self.get_action(observation, i)
+                action = self.get_action(observation)
 
                 actions.append(action)
                 new_observation, reward, done, info = self.step(action)
@@ -142,11 +144,11 @@ class QTrainerEpisode(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
-    def get_action(self, observation, i: int,
-                   logging_level: Union[logging.debug, logging.info] = logging.info):
+    def get_action(self, observation,
+                   logging_level: Union[logging.debug, logging.info] = logging.debug):
         exploration = self.hyperparameters.exploration_options
         if exploration.method == ExplorationMethod.EPSILON:
-            if np.random.random() < exploration.get_epsilon(i):
+            if np.random.random() < exploration.get_epsilon(self.episode_number):
                 action = self.env.get_random_action()
                 logging_level(f"action: {action} (randomly generated)")
             else:
@@ -158,7 +160,7 @@ class QTrainerEpisode(BaseTrainer):
         elif exploration.method == ExplorationMethod.SOFTMAX:
             q_values = self.get_q_values(observation)
             # exploration: 1, B_RL: 0. exploration: 0, B_RL: infinity
-            B_RL = exploration.get_B_RL(i)
+            B_RL = exploration.get_B_RL(self.episode_number)
             logging_level(f"q_values: {q_values}")
             e_x = np.exp(B_RL * (q_values - np.max(q_values)))
             probabilities = e_x / e_x.sum(axis=0)
