@@ -78,7 +78,7 @@ class QEnv3(BasePseudoEnv):
         return super().reset()
 
     def get_state(self) -> np.ndarray:
-        return np.array((self.current_step * self.dt, self.current_h_x, fidelity(self.current_state, self.target_state)))
+        return np.array((self.current_step, self.current_h_x, fidelity(self.current_state, self.target_state)))
 
     def get_random_action(self):
         return random.getrandbits(1)
