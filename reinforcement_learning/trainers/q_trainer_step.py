@@ -105,7 +105,7 @@ class QTrainerStep(BaseTrainer):
             target = reward
             # target = -100  # ONLY FOR CARTPOLE
         else:
-            gamma = self.hyperparameters.decay_rate
+            gamma = self.hyperparameters.discount_rate
             target = reward + gamma * np.max(self.get_q_values(new_observation))
         logger.debug(f"target: {target}")
         target_vec = self.get_q_values(observation)

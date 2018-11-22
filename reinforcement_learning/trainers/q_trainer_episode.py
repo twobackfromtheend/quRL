@@ -121,7 +121,10 @@ class QTrainerEpisode(BaseTrainer):
         if done:
             target = reward
         else:
-            gamma = self.hyperparameters.decay_rate
+            if isinstance(self.hyperparameters.discount_rate, float):
+                gamma = self.hyperparameters.discount_rate
+            else:
+                gamma = self.hyperparameters.discount_rate(self.episode_number)
             target = reward + gamma * np.max(self.get_q_values(new_state))
         target_vec[action] = target
 
@@ -299,10 +302,14 @@ if __name__ == '__main__':
     #                    inner_activation='relu', output_activation='linear')
 
     EPISODES = 10000
+
+    def discount_rate(i: int) -> float:
+        return min(1, 0.95 + (1 - 0.95) * EPISODES / 2)
+
     trainer = QTrainerEpisode(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            0.95,
+            discount_rate,
             ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.8, epsilon_decay=0.999)
             # ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),

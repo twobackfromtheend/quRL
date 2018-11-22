@@ -1,5 +1,6 @@
 import logging
 from enum import Enum, auto
+from typing import Callable, Union
 
 logger = logging.getLogger(__name__)
 
@@ -95,12 +96,15 @@ class ExplorationOptions:
 
 
 class QLearningHyperparameters:
-    def __init__(self, decay_rate: float, exploration_options: ExplorationOptions = ExplorationOptions()):
+    def __init__(self, discount_rate: Union[float, Callable[[int], float]],
+                 exploration_options: ExplorationOptions = ExplorationOptions()):
         """
         Defines hyperparameters required for Q-learning.
-        :param decay_rate: (aka discount rate) - used to calculate future discounted reward, suggested: 0.95
+        :param discount_rate: (aka discount rate) - used to calculate future discounted reward, suggested: 0.95
+            Can be a function that takes in the episode number as argument and returns a float
         :param exploration_options: See ExplorationOptions
         """
-        self.decay_rate = decay_rate
-        assert 0 < decay_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
+        self.discount_rate = discount_rate
+        if isinstance(discount_rate, float):
+            assert 0 < discount_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
         self.exploration_options = exploration_options
