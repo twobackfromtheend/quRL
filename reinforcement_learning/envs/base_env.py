@@ -14,6 +14,7 @@ class BaseTimeSensitiveEnv:
 
     def reset(self, *args, **kwargs):
         state = self.env.reset(*args, **kwargs)
+        self.step_number = 0
         return self.get_observation(state)
 
     def render(self, *args, **kwargs):
@@ -37,8 +38,7 @@ class BaseTimeSensitiveEnv:
         """
         if self.step_number >= self.max_episode_steps - 1:
             done = True
-            self.step_number = 0
         else:
             done = False
-            self.step_number += 1
+        self.step_number += 1
         return done
