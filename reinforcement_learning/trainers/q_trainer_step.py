@@ -13,7 +13,7 @@ from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
-from reinforcement_learning.trainers.replay_handlers.epoch_replay_handler import EpochReplayHandler
+from reinforcement_learning.trainers.replay_handlers.episodic.epoch_replay_handler import EpochReplayHandler
 
 logger = logging.getLogger(__name__)
 

@@ -11,35 +11,12 @@ from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
+from reinforcement_learning.trainers.episodic_data import EpisodicData
 from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
-from reinforcement_learning.trainers.replay_handlers.exclusive_best_replay_handler import ExclusiveBestReplayHandler
+from reinforcement_learning.trainers.replay_handlers.episodic.exclusive_best_replay_handler import ExclusiveBestReplayHandler
 
 logger = logging.getLogger(__name__)
-
-
-class EpisodicData:
-    def __init__(self):
-        self.states: list = None
-        self.targets: list = None
-
-    def reset(self):
-        """
-        Initialises the states and targets attributes
-        """
-        self.states = []
-        self.targets = []
-
-    def record_step_data(self, state, target):
-        self.states.append(state)
-        self.targets.append(target)
-
-    def get_data_to_train(self):
-        """
-        Gets the saved data as NumPy arrays to be trained on.
-        :return:
-        """
-        return np.array(self.states), np.array(self.targets)
 
 
 class QTrainerEpisode(BaseTrainer):

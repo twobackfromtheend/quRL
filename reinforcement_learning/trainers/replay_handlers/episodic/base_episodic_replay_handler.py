@@ -1,10 +1,7 @@
-from collections import deque
 from typing import Sequence
 
-import numpy as np
 
-
-class BaseReplayHandler:
+class BaseEpisodicReplayHandler:
 
     def __init__(self):
         raise NotImplementedError
