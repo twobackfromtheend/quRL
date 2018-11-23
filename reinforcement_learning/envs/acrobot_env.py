@@ -32,10 +32,6 @@ class AcrobotTSEnv(BaseTimeSensitiveEnv):
         new_state = self.get_observation(new_state)
         return new_state, reward, done, info
 
-    def reset(self, *args, **kwargs):
-        state = self.env.reset(*args, **kwargs)
-        return self.get_observation(state)
-
     def _get_height(self):
         unwrapped_state = self.env.unwrapped.state
-        return (-np.cos(unwrapped_state[0]) - np.cos(unwrapped_state[1] + unwrapped_state[0]) + 2) * 200
+        return -np.cos(unwrapped_state[0]) - np.cos(unwrapped_state[1] + unwrapped_state[0]) + 2
