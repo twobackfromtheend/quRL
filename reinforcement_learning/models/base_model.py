@@ -7,7 +7,7 @@ from tensorflow.python.keras.models import save_model
 
 class BaseModel:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.model = self.build_model()
 
     def build_model(self) -> Union[Sequential, Model]:
@@ -18,3 +18,6 @@ class BaseModel:
         if use_timestamp:
             filename += f"{time.strftime('%Y%m%d-%H%M%S')}"
         save_model(self.model, filename)
+
+    def create_copy(self):
+        return self.__class__(**self.__dict__)
