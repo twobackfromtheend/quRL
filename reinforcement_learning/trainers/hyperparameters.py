@@ -107,4 +107,5 @@ class QLearningHyperparameters:
         self.discount_rate = discount_rate
         if isinstance(discount_rate, float):
             assert 0 < discount_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
+            self.discount_rate = lambda _: discount_rate
         self.exploration_options = exploration_options
