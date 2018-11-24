@@ -38,7 +38,8 @@ class DQNTrainer(BaseTrainer):
     def train(self, episodes: int = 1000, render: bool = False,
               save_every: int = 1000,
               evaluate_every: int = 50,
-              update_target_every: int = 10):
+              update_target_soft: bool = True,
+              update_target_tau: float = 0.001):
         exploration = self.hyperparameters.exploration_options
 
         if self.tensorboard:
@@ -89,7 +90,7 @@ class DQNTrainer(BaseTrainer):
                 self.evaluate_model(render, i // evaluate_every)
             if i % save_every == save_every - 1:
                 self.save_model()
-            self.target_model.model.set_weights(self.model.model.get_weights())
+            self.update_target_model(update_target_soft, update_target_tau)
             # if i % update_target_every == update_target_every - 1:
             #     self.target_model.model.set_weights(self.model.model.get_weights())
 
@@ -178,6 +179,24 @@ class DQNTrainer(BaseTrainer):
             return SoftmaxPolicy.get_action(q_values, exploration.get_B_RL(self.episode_number), log_func)
         else:
             raise ValueError(f"Unknown exploration method: {exploration.method}")
+
+    def update_target_model(self, soft: bool, tau: float):
+        """
+        Update target model's weights with policy model's.
+        If soft,
+            theta_target <- tau * theta_policy + (1 - tau) * theta_target
+            tau << 1.
+        :param soft:
+        :param tau: tau << 1 (recommended: 0.001)
+        :return:
+        """
+        if soft:
+            self.target_model.model.set_weights(
+                tau * np.array(self.model.model.get_weights())
+                + (1 - tau) * np.array(self.target_model.model.get_weights())
+            )
+        else:
+            self.target_model.model.set_weights(self.model.model.get_weights())
 
     @log_process(logger, "saving model")
     def save_model(self):
@@ -282,7 +301,7 @@ if __name__ == '__main__':
 
 
     def discount_rate(i: int) -> float:
-        return min(1, 0.95 + (1 - 0.95) * EPISODES / 2)
+        return min(0.9999, 0.97 + (1 - 0.97) * EPISODES / 2)
 
 
     trainer = DQNTrainer(
