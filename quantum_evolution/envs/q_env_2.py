@@ -5,7 +5,7 @@ from typing import Sequence
 import numpy as np
 from qutip import Qobj, fidelity, sigmax, sigmay, sigmaz
 
-from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.envs.base_q_env import BaseQEnv
 from quantum_evolution.plotter.bloch_figure import BlochFigure
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
@@ -13,7 +13,7 @@ from quantum_evolution.simulations.env_simulation import EnvSimulation
 logger = logging.getLogger(__name__)
 
 
-class QEnv2(BasePseudoEnv):
+class QEnv2(BaseQEnv):
     """
     state / observation: S = (t, h_x(t))
     action: A = 0, 1; corresponding to stay (dh = 0), switch sign (dh = +-8).

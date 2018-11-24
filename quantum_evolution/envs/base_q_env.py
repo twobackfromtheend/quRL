@@ -7,7 +7,7 @@ from qutip.solver import Result
 from quantum_evolution.simulations.env_simulation import EnvSimulation
 
 
-class BasePseudoEnv:
+class BaseQEnv:
     """
     Temporary construct to avoid having to create full-fledged env.
     See https://stackoverflow.com/a/47132897

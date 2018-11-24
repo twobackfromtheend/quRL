@@ -2,7 +2,7 @@ import unittest
 
 from qutip import rand_ket
 
-from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.models.dense_model import DenseModel
 from reinforcement_learning.trainers.base_trainer import BaseTrainer
@@ -16,7 +16,7 @@ class TestClasses(unittest.TestCase):
 
     def test_base_pseudo_env(self):
         with self.assertRaises(NotImplementedError):
-            pseudo_env = BasePseudoEnv(rand_ket(2), rand_ket(2))
+            pseudo_env = BaseQEnv(rand_ket(2), rand_ket(2))
             pseudo_env.reset()
 
     def test_base_trainer(self):

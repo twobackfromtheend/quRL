@@ -5,7 +5,7 @@ from typing import Sequence
 import numpy as np
 from qutip import Qobj, fidelity, sigmax, sigmay, sigmaz
 
-from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.envs.base_q_env import BaseQEnv
 from quantum_evolution.plotter.bloch_figure import BlochFigure
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
@@ -13,7 +13,7 @@ from quantum_evolution.simulations.env_simulation import EnvSimulation
 logger = logging.getLogger(__name__)
 
 
-class QEnv3(BasePseudoEnv):
+class QEnv3(BaseQEnv):
     """
     Copy of QEnv2 with fidelity as an added feature
     state / observation: S = (t, h_x(t), fidelity)

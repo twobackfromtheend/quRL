@@ -6,7 +6,7 @@ from qutip.solver import Result
 from tensorflow.python.keras import backend as K
 
 from logger_utils.logger_utils import log_process
-from quantum_evolution.envs.base_pseudo_env import BasePseudoEnv
+from quantum_evolution.envs.base_q_env import BaseQEnv
 from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
@@ -22,7 +22,7 @@ class QTrainerStep(BaseTrainer):
     """
     Performs a gradient update on each step.
     """
-    def __init__(self, model: BaseModel, env: BasePseudoEnv, hyperparameters: QLearningHyperparameters,
+    def __init__(self, model: BaseModel, env: BaseQEnv, hyperparameters: QLearningHyperparameters,
                  with_tensorboard: bool):
         super().__init__(model, env, hyperparameters, with_tensorboard)
         self.evaluation_tensorboard = None
