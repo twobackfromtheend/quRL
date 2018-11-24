@@ -214,7 +214,7 @@ class DQNTrainer(BaseTrainer):
 
     @staticmethod
     def get_learning_rate(i: int) -> float:
-        return 1e-4
+        return 1e-5
         # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+6+*+10%5E-3)+*+exp(-(x+%2F+1000))+%2B+3+*+10%5E-5+for+x+from+0+to+3000
         # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # t = 0.5
     # # N = 60
     # # t = 3
-    # from quantum_evolution.envs.q_env_2 import QEnv2
+    # from quantum_evolution.time_sensitive_envs.q_env_2 import QEnv2
     # env = QEnv2(hamiltonian_datas, t, N=N,
     #             initial_state=initial_state, target_state=target_state)
     # model = DenseModel(inputs=2, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
@@ -265,7 +265,7 @@ if __name__ == '__main__':
                        inner_activation='relu', output_activation='linear')
 
     # RUN FOR CARTPOLE
-    # from reinforcement_learning.envs.cartpole_env import CartPoleTSEnv
+    # from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
     # time_sensitive = False
     # env = CartPoleTSEnv(time_sensitive=time_sensitive)
     # inputs = 5 if time_sensitive else 4
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     #                    inner_activation='relu', output_activation='linear')
 
     # RUN FOR ACROBOT
-    # from reinforcement_learning.envs.acrobot_env import AcrobotTSEnv
+    # from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
     # env = AcrobotTSEnv(sparse=True)
     # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')

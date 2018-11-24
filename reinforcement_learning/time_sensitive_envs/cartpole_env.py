@@ -1,6 +1,6 @@
 import gym
 
-from reinforcement_learning.envs.base_env import BaseTimeSensitiveEnv
+from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 
 
 class CartPoleTSEnv(BaseTimeSensitiveEnv):
@@ -10,7 +10,7 @@ class CartPoleTSEnv(BaseTimeSensitiveEnv):
 
         gym.envs.register(
             id='CartPoleTimeSensitive-v0',
-            entry_point='gym.envs.classic_control:CartPoleEnv',
+            entry_point='gym.time_sensitive_envs.classic_control:CartPoleEnv',
             max_episode_steps=max_episode_steps
         )
         self.env = gym.make('CartPoleTimeSensitive-v0')

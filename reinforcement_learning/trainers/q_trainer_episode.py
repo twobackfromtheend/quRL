@@ -249,7 +249,7 @@ if __name__ == '__main__':
     # t = 0.5
     # # N = 60
     # # t = 3
-    # from quantum_evolution.envs.q_env_2 import QEnv2
+    # from quantum_evolution.time_sensitive_envs.q_env_2 import QEnv2
     # env = QEnv2(hamiltonian_datas, t, N=N,
     #             initial_state=initial_state, target_state=target_state)
     # model = DenseModel(inputs=2, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
@@ -267,15 +267,15 @@ if __name__ == '__main__':
                        inner_activation='relu', output_activation='linear')
 
     # RUN FOR CARTPOLE
-    from reinforcement_learning.envs.cartpole_env import CartPoleTSEnv
-    time_sensitive = False
-    env = CartPoleTSEnv(time_sensitive=time_sensitive)
-    inputs = 5 if time_sensitive else 4
-    model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-                       inner_activation='relu', output_activation='linear')
+    # from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
+    # time_sensitive = False
+    # env = CartPoleTSEnv(time_sensitive=time_sensitive)
+    # inputs = 5 if time_sensitive else 4
+    # model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+    #                    inner_activation='relu', output_activation='linear')
 
     # RUN FOR ACROBOT
-    # from reinforcement_learning.envs.acrobot_env import AcrobotTSEnv
+    # from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
     # env = AcrobotTSEnv(sparse=True)
     # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')
