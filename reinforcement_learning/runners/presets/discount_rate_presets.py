@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import partial
 
 
 def get_increasing_discount_rate(steps: int, starting_value: float = 0.97, ending_value: float = 0.999):
@@ -12,6 +13,6 @@ class DiscountRatePreset(Enum):
     CONST_95 = 0.95
     CONST_97 = 0.97
     CONST_99 = 0.99
-    INCREASING_5000 = get_increasing_discount_rate(5000)
-    INCREASING_10000 = get_increasing_discount_rate(10000)
-    INCREASING_20000 = get_increasing_discount_rate(20000)
+    INCREASING_5000 = partial(get_increasing_discount_rate(5000))
+    INCREASING_10000 = partial(get_increasing_discount_rate(10000))
+    INCREASING_20000 = partial(get_increasing_discount_rate(20000))

@@ -1,5 +1,6 @@
 import math
 from enum import Enum
+from functools import partial
 
 
 def get_cyclical_learning_rate(scale: int = 100, upper_limit: float = 3e-3, lower_limit: float = 1e-5):
@@ -14,6 +15,6 @@ def get_cyclical_learning_rate(scale: int = 100, upper_limit: float = 3e-3, lowe
 class LearningRatePreset(Enum):
     CONST_1_3 = 1e-3
     CONST_1_5 = 1e-5
-    CYCLICAL_100_2_5 = get_cyclical_learning_rate(100, 1e-2, 1e-5)
-    CYCLICAL_100_3_5 = get_cyclical_learning_rate(100, 1e-3, 1e-5)
-    CYCLICAL_100_4_5 = get_cyclical_learning_rate(100, 1e-4, 1e-5)
+    CYCLICAL_100_2_5 = partial(get_cyclical_learning_rate(100, 1e-2, 1e-5))
+    CYCLICAL_100_3_5 = partial(get_cyclical_learning_rate(100, 1e-3, 1e-5))
+    CYCLICAL_100_4_5 = partial(get_cyclical_learning_rate(100, 1e-4, 1e-5))

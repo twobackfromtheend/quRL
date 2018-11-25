@@ -2,7 +2,7 @@ from enum import Enum
 
 from quantum_evolution.envs.q_env_2 import QEnv2
 from quantum_evolution.envs.q_env_3 import QEnv3
-from reinforcement_learning.runners.utility_classes.env_data import EnvData
+from reinforcement_learning.runners.utils.env_data import EnvData
 from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
 from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
 
