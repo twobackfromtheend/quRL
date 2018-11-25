@@ -4,9 +4,13 @@ import numpy as np
 class BaseTimeSensitiveEnv:
     env = None
 
-    def __init__(self, max_episode_steps):
+    def __init__(self, max_episode_steps: int, time_sensitive: bool):
         self.step_number = 0
         self.max_episode_steps = max_episode_steps
+
+        if not time_sensitive:
+            self.step = self.vanilla_step
+            self.reset = self.vanilla_reset
 
     def step(self, *args, **kwargs):
         new_state, reward, done, info = self.env.step(*args, **kwargs)
@@ -42,3 +46,16 @@ class BaseTimeSensitiveEnv:
             done = False
         self.step_number += 1
         return done
+
+    def vanilla_step(self, action):
+        """
+        Non-time-sensitive.
+        """
+        new_state, reward, done, info = self.env.step(action)
+        return new_state, reward, done, info
+
+    def vanilla_reset(self, *args, **kwargs):
+        """
+        Non-time-sensitive.
+        """
+        return self.env.reset(*args, **kwargs)

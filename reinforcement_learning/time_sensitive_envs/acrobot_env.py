@@ -5,8 +5,8 @@ import gym
 
 
 class AcrobotTSEnv(BaseTimeSensitiveEnv):
-    def __init__(self, max_episode_steps: int = 250, sparse: bool = True):
-        super().__init__(max_episode_steps)
+    def __init__(self, max_episode_steps: int = 250, sparse: bool = True, time_sensitive: bool = True):
+        super().__init__(max_episode_steps, time_sensitive)
         gym.envs.register(
             id='AcrobotFixedTime-v0',
             entry_point='gym.envs.classic_control:AcrobotEnv',
