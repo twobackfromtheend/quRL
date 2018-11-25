@@ -1,8 +1,7 @@
 import logging
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
-from tensorflow.python.keras import backend as K
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
@@ -40,7 +39,8 @@ class DQNTrainer(BaseTrainer):
               evaluate_every: int = 50,
               update_target_every: int = 1,
               update_target_soft: bool = True,
-              update_target_tau: float = 0.001):
+              update_target_tau: float = 0.01,
+              learning_rate_override: Callable[[int], float] = None):
         exploration = self.hyperparameters.exploration_options
 
         if self.tensorboard:
@@ -49,8 +49,8 @@ class DQNTrainer(BaseTrainer):
         for i in range(episodes):
             logger.info(f"\nEpisode {i}/{episodes}")
             observation = self.env.reset()
-
-            self.update_learning_rate(i)
+            if learning_rate_override:
+                self.update_learning_rate(learning_rate_override(i))
             logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
 
             reward_total = 0
@@ -139,8 +139,6 @@ class DQNTrainer(BaseTrainer):
             target = reward
         If not done,
             target = r + gamma * max(q_values(next_state))
-        :param states:
-        :param actions:
         :param rewards:
         :param next_states:
         :param dones:
@@ -219,66 +217,12 @@ class DQNTrainer(BaseTrainer):
         logger.info(f"Evaluation reward: {reward_total}")
         self.evaluation_rewards.append(reward_total)
 
-    def update_learning_rate(self, i: int):
-        current_learning_rate = float(K.get_value(self.model.model.optimizer.lr))
-        logger.info(f"learning rate: {current_learning_rate}")
-        new_learning_rate = self.get_learning_rate(i)
-        K.set_value(self.model.model.optimizer.lr, new_learning_rate)
-
-    @staticmethod
-    def get_learning_rate(i: int) -> float:
-        return 1e-3
-        # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+6+*+10%5E-3)+*+exp(-(x+%2F+1000))+%2B+3+*+10%5E-5+for+x+from+0+to+3000
-        # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
-
 
 if __name__ == '__main__':
-    from qutip import *
-    from quantum_evolution.simulations.base_simulation import HamiltonianData
     from reinforcement_learning.models.dense_model import DenseModel
 
-    logger = logging.getLogger()
     logging.basicConfig(level=logging.INFO)
 
-    initial_state = (-sigmaz() + 2 * sigmax()).groundstate()[1]
-    target_state = (-sigmaz() - 2 * sigmax()).groundstate()[1]
-
-
-    def placeholder_callback(t, args):
-        raise RuntimeError
-
-
-    hamiltonian_datas = [
-        HamiltonianData(-sigmaz()),
-        HamiltonianData(-sigmax(), placeholder_callback)
-    ]
-
-    # RUN FOR QEnv2
-    N = 10
-    t = 0.5
-    # N = 60
-    # t = 3
-    # from quantum_evolution.envs.q_env_2 import QEnv2
-    # env = QEnv2(hamiltonian_datas, t, N=N,
-    #             initial_state=initial_state, target_state=target_state)
-    # model = DenseModel(inputs=2, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
-
-    # RUN FOR QEnv3
-    # N = 10
-    # t = 0.5
-    # # N = 48
-    # # t = 2.4
-    # # N = 60
-    # # t = 3
-    # from quantum_evolution.envs.q_env_3 import QEnv3
-    #
-    # env = QEnv3(hamiltonian_datas, t, N=N,
-    #             initial_state=initial_state, target_state=target_state)
-    # model = DenseModel(inputs=3, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
-
-    # RUN FOR CARTPOLE
     from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
     time_sensitive = False
     env = CartPoleTSEnv(time_sensitive=time_sensitive)
@@ -286,17 +230,7 @@ if __name__ == '__main__':
     model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
                        inner_activation='relu', output_activation='linear')
 
-    # RUN FOR ACROBOT
-    # from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
-    # env = AcrobotTSEnv(sparse=True)
-    # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
-
     EPISODES = 20000
-
-
-    def discount_rate(i: int) -> float:
-        return min(0.999, 0.97 + (1 - 0.97) * i / (EPISODES / 2))
 
 
     trainer = DQNTrainer(

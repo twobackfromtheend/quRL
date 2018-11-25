@@ -44,7 +44,6 @@ class QTrainerStep(BaseTrainer):
             logger.info(f"\nEpisode {i}/{episodes}")
             observation = self.env.reset()
             logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
-            self.update_learning_rate(i)
 
             reward_total = 0
             losses = []
@@ -92,20 +91,20 @@ class QTrainerStep(BaseTrainer):
 
         self.reward_totals = reward_totals
 
-    def train_on_step(self, observation, action: int, new_observation, reward: float, done: bool) -> List[float]:
+    def train_on_step(self, observation, action: int, new_observation, reward: float, done: bool, i: int) -> List[float]:
         """
         Trains model on a single step.
         :param observation:
         :param action:
         :param new_observation:
         :param reward:
+        :param i: episode number
         :return: train_loss, train_mae (List[float])
         """
         if done:
             target = reward
-            # target = -100  # ONLY FOR CARTPOLE
         else:
-            gamma = self.hyperparameters.discount_rate
+            gamma = self.hyperparameters.discount_rate(i)
             target = reward + gamma * np.max(self.get_q_values(new_observation))
         logger.debug(f"target: {target}")
         target_vec = self.get_q_values(observation)
@@ -210,53 +209,20 @@ class QTrainerStep(BaseTrainer):
         # bloch_animation.show()
         # bloch_animation.save(filename=f"evaluation_{i}.mp4")
 
-    def update_learning_rate(self, i: int):
-        current_learning_rate = float(K.get_value(self.model.model.optimizer.lr))
-        logger.info(f"learning rate: {current_learning_rate}")
-        new_learning_rate = self.get_learning_rate(i)
-        K.set_value(self.model.model.optimizer.lr, new_learning_rate)
-
-    @staticmethod
-    def get_learning_rate(i: int) -> float:
-        return 3e-3
-        # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+3+*+10+%5E+-3)+*+exp(+-(x+%2F+1000))+%2B+3+*+10+%5E+-5+for+x+from+0+to+1000
-        # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
-
 
 if __name__ == '__main__':
-    from qutip import *
-    from quantum_evolution.envs.q_env_2 import QEnv2
-    from quantum_evolution.simulations.base_simulation import HamiltonianData
     from reinforcement_learning.models.dense_model import DenseModel
 
     logger = logging.getLogger()
     logging.basicConfig(level=logging.INFO)
 
-    initial_state = (-sigmaz() + 2 * sigmax()).groundstate()[1]
-    target_state = (-sigmaz() - 2 * sigmax()).groundstate()[1]
-
-
-    def placeholder_callback(t, args):
-        raise RuntimeError
-
-
-    hamiltonian_datas = [
-        HamiltonianData(-sigmaz()),
-        HamiltonianData(-sigmax(), placeholder_callback)
-    ]
-    N = 10
-    t = 0.5
-    env = QEnv2(hamiltonian_datas, t, N=N,
-                initial_state=initial_state, target_state=target_state)
     model = DenseModel(inputs=2, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
                        inner_activation='relu', output_activation='linear')
 
-    # RUN FOR CARTPOLE
-    # Uncomment the target above in train_on_step()
-    # import gym
-    # env = gym.make('CartPole-v0')
-    # model = DenseModel(inputs=4, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
+    import gym
+    env = gym.make('CartPole-v0')
+    model = DenseModel(inputs=4, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+                       inner_activation='relu', output_activation='linear')
 
     EPISODES = 3000
     trainer = QTrainerStep(

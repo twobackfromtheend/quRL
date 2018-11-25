@@ -100,10 +100,7 @@ class QTrainerEpisode(BaseTrainer):
         if done:
             target = reward
         else:
-            if isinstance(self.hyperparameters.discount_rate, float):
-                gamma = self.hyperparameters.discount_rate
-            else:
-                gamma = self.hyperparameters.discount_rate(self.episode_number)
+            gamma = self.hyperparameters.discount_rate(self.episode_number)
             target = reward + gamma * np.max(self.get_q_values(new_state))
         target_vec[action] = target
 

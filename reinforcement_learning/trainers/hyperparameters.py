@@ -95,9 +95,11 @@ class ExplorationOptions:
         return min(self.limiting_value, B_RL)
 
 
+DiscountRate = Union[float, Callable[[int], float]]
+
+
 class QLearningHyperparameters:
-    def __init__(self, discount_rate: Union[float, Callable[[int], float]],
-                 exploration_options: ExplorationOptions = ExplorationOptions()):
+    def __init__(self, discount_rate: DiscountRate, exploration_options: ExplorationOptions = ExplorationOptions()):
         """
         Defines hyperparameters required for Q-learning.
         :param discount_rate: (aka discount rate) - used to calculate future discounted reward, suggested: 0.95
