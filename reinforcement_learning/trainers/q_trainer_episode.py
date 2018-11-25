@@ -90,6 +90,7 @@ class QTrainerEpisode(BaseTrainer):
                 self.replay_trainer(render)
 
         self.reward_totals = reward_totals
+        self.save_model()
 
     def step(self, action):
         new_state, reward, done, info = self.env.step(action)
@@ -215,7 +216,7 @@ class QTrainerEpisode(BaseTrainer):
 
     @staticmethod
     def get_learning_rate(i: int) -> float:
-        return 3e-3
+        return 1e-6
         # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+6+*+10%5E-3)+*+exp(-(x+%2F+1000))+%2B+3+*+10%5E-5+for+x+from+0+to+3000
         # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
@@ -253,8 +254,10 @@ if __name__ == '__main__':
     #                    inner_activation='relu', output_activation='linear')
 
     # RUN FOR QEnv3
-    N = 10
-    t = 0.5
+    # N = 10
+    # t = 0.5
+    N = 48
+    t = 2.4
     # N = 60
     # t = 3
     from quantum_evolution.envs.q_env_3 import QEnv3
@@ -277,7 +280,7 @@ if __name__ == '__main__':
     # model = DenseModel(inputs=7, outputs=3, layer_nodes=(48, 48, 24), learning_rate=3e-3,
     #                    inner_activation='relu', output_activation='linear')
 
-    EPISODES = 10000
+    EPISODES = 40000
 
     def discount_rate(i: int) -> float:
         return min(1, 0.95 + (1 - 0.95) * EPISODES / 2)
