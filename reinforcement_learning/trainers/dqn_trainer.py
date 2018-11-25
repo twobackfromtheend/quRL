@@ -38,6 +38,7 @@ class DQNTrainer(BaseTrainer):
     def train(self, episodes: int = 1000, render: bool = False,
               save_every: int = 1000,
               evaluate_every: int = 50,
+              update_target_every: int = 1,
               update_target_soft: bool = True,
               update_target_tau: float = 0.001):
         exploration = self.hyperparameters.exploration_options
@@ -70,6 +71,10 @@ class DQNTrainer(BaseTrainer):
                     losses.append(loss)
                 except InsufficientExperiencesError:
                     pass
+
+                if i % update_target_every == 0:
+                    self.update_target_model(update_target_soft, update_target_tau)
+
                 observation = new_observation
                 reward_total += reward
                 if render:
@@ -90,9 +95,6 @@ class DQNTrainer(BaseTrainer):
                 self.evaluate_model(render, i // evaluate_every)
             if i % save_every == save_every - 1:
                 self.save_model()
-            self.update_target_model(update_target_soft, update_target_tau)
-            # if i % update_target_every == update_target_every - 1:
-            #     self.target_model.model.set_weights(self.model.model.get_weights())
 
             self.episode_number += 1
         self.reward_totals = reward_totals
@@ -127,7 +129,6 @@ class DQNTrainer(BaseTrainer):
         for i, action in enumerate(actions):
             # Set target values in target_vecs
             target_vecs[i, action] = targets[i]
-
         loss = self.model.model.train_on_batch(states, target_vecs)
         return loss
 
@@ -161,14 +162,7 @@ class DQNTrainer(BaseTrainer):
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
-    def get_target_q_values(self, state) -> np.ndarray:
-        logger.debug("Get target Q values")
-        q_values = self.target_model.model.predict(state.reshape((1, -1)))
-        logger.debug(f"Q values {q_values}")
-        return q_values[0]
-
-    def get_action(self, observation,
-                   log_func: Union[logging.debug, logging.info] = logging.debug):
+    def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
         exploration = self.hyperparameters.exploration_options
         q_values = self.get_policy_q_values(observation)
 
@@ -233,7 +227,7 @@ class DQNTrainer(BaseTrainer):
 
     @staticmethod
     def get_learning_rate(i: int) -> float:
-        return 1e-5
+        return 1e-3
         # https://www.wolframalpha.com/input/?i=y+%3D+((cos(x+%2F+100)+%2B+1.000)+%2F+2+*+6+*+10%5E-3)+*+exp(-(x+%2F+1000))+%2B+3+*+10%5E-5+for+x+from+0+to+3000
         # return ((math.cos(i / 100) + 1.000) / 2 * 6 * 10 ** -3) * math.e ** -(i / 1000) + 3 * 10 ** -5
 
@@ -260,11 +254,11 @@ if __name__ == '__main__':
     ]
 
     # RUN FOR QEnv2
-    # N = 10
-    # t = 0.5
-    # # N = 60
-    # # t = 3
-    # from quantum_evolution.time_sensitive_envs.q_env_2 import QEnv2
+    N = 10
+    t = 0.5
+    # N = 60
+    # t = 3
+    # from quantum_evolution.envs.q_env_2 import QEnv2
     # env = QEnv2(hamiltonian_datas, t, N=N,
     #             initial_state=initial_state, target_state=target_state)
     # model = DenseModel(inputs=2, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
@@ -273,23 +267,24 @@ if __name__ == '__main__':
     # RUN FOR QEnv3
     # N = 10
     # t = 0.5
-    N = 48
-    t = 2.4
-    # N = 60
-    # t = 3
-    from quantum_evolution.envs.q_env_3 import QEnv3
-    env = QEnv3(hamiltonian_datas, t, N=N,
-                initial_state=initial_state, target_state=target_state)
-    model = DenseModel(inputs=3, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
-                       inner_activation='relu', output_activation='linear')
+    # # N = 48
+    # # t = 2.4
+    # # N = 60
+    # # t = 3
+    # from quantum_evolution.envs.q_env_3 import QEnv3
+    #
+    # env = QEnv3(hamiltonian_datas, t, N=N,
+    #             initial_state=initial_state, target_state=target_state)
+    # model = DenseModel(inputs=3, outputs=2, layer_nodes=(24, 24), learning_rate=3e-3,
+    #                    inner_activation='relu', output_activation='linear')
 
     # RUN FOR CARTPOLE
-    # from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
-    # time_sensitive = False
-    # env = CartPoleTSEnv(time_sensitive=time_sensitive)
-    # inputs = 5 if time_sensitive else 4
-    # model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-    #                    inner_activation='relu', output_activation='linear')
+    from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
+    time_sensitive = False
+    env = CartPoleTSEnv(time_sensitive=time_sensitive)
+    inputs = 5 if time_sensitive else 4
+    model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
+                       inner_activation='relu', output_activation='linear')
 
     # RUN FOR ACROBOT
     # from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
@@ -301,18 +296,19 @@ if __name__ == '__main__':
 
 
     def discount_rate(i: int) -> float:
-        return min(0.9999, 0.97 + (1 - 0.97) * EPISODES / 2)
+        return min(0.999, 0.97 + (1 - 0.97) * i / (EPISODES / 2))
 
 
     trainer = DQNTrainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            0.98,
-            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.8, epsilon_decay=0.999)
+            discount_rate,
+            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.5, epsilon_decay=0.999,
+                               limiting_value=0.1)
             # ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),
         with_tensorboard=True
     )
-    trainer.train(render=False, episodes=EPISODES)
+    trainer.train(render=True, episodes=EPISODES, update_target_tau=0.05)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")
