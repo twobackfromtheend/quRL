@@ -10,7 +10,7 @@ class CartPoleTSEnv(BaseTimeSensitiveEnv):
 
         gym.envs.register(
             id='CartPoleTimeSensitive-v0',
-            entry_point='gym.time_sensitive_envs.classic_control:CartPoleEnv',
+            entry_point='gym.envs.classic_control:CartPoleEnv',
             max_episode_steps=max_episode_steps
         )
         self.env = gym.make('CartPoleTimeSensitive-v0')

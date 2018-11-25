@@ -9,7 +9,7 @@ class AcrobotTSEnv(BaseTimeSensitiveEnv):
         super().__init__(max_episode_steps)
         gym.envs.register(
             id='AcrobotFixedTime-v0',
-            entry_point='gym.time_sensitive_envs.classic_control:AcrobotEnv',
+            entry_point='gym.envs.classic_control:AcrobotEnv',
             max_episode_steps=max_episode_steps,
         )
         self.env = gym.make('AcrobotFixedTime-v0')
