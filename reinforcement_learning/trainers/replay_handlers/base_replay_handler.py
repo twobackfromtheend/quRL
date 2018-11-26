@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class BaseStepReplayHandler:
+class BaseReplayHandler:
 
     def __init__(self):
         raise NotImplementedError

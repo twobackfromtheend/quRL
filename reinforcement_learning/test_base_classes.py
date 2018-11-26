@@ -5,8 +5,8 @@ from qutip import rand_ket
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.models.dense_model import DenseModel
-from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
+from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
 
 
 class TestClasses(unittest.TestCase):

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from reinforcement_learning.trainers.hyperparameters import ExplorationOptions, ExplorationMethod
+from reinforcement_learning.trainers.base_classes.hyperparameters import ExplorationOptions, ExplorationMethod
 
 
 class ExplorationPreset(Enum):

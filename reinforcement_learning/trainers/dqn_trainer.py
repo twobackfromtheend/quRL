@@ -7,12 +7,12 @@ from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
-from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
+from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
+from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
 from reinforcement_learning.trainers.policies.epsilon_greedy import EpsilonGreedyPolicy
 from reinforcement_learning.trainers.policies.softmax import SoftmaxPolicy
-from reinforcement_learning.trainers.replay_handlers.step.experience_replay_handler import ExperienceReplayHandler, \
+from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import ExperienceReplayHandler, \
     InsufficientExperiencesError
 
 logger = logging.getLogger(__name__)

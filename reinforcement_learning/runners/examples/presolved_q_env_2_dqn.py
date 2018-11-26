@@ -7,7 +7,7 @@ from reinforcement_learning.runners.utils.quantum_variables import get_quantum_v
 from reinforcement_learning.trainers.dqn_trainer import DQNTrainer
 
 TRAINER = DQNTrainer
-ENV = EnvPreset.QENV3
+ENV = EnvPreset.PRESOLVED_QENV2
 MODEL = ModelPreset.DEFAULT
 
 EPISODES = 20000

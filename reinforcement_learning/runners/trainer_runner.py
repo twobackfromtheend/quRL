@@ -6,8 +6,8 @@ from reinforcement_learning.runners.presets.env_presets import EnvPreset
 from reinforcement_learning.runners.presets.exploration_presets import ExplorationPreset
 from reinforcement_learning.runners.presets.model_presets import ModelPreset
 from reinforcement_learning.runners.utils.env_data import EnvData
-from reinforcement_learning.trainers.base_trainer import BaseTrainer
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
+from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
 
 
 def run(trainer: Type[BaseTrainer], model_preset: ModelPreset, env_preset: EnvPreset, episodes: int,

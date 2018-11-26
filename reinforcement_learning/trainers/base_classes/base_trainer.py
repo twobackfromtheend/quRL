@@ -2,7 +2,7 @@ from typing import List
 
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
-from reinforcement_learning.trainers.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
 from tensorflow.python.keras import backend as K
 
 
