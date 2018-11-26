@@ -215,6 +215,14 @@ class DQNTrainer(BaseTrainer):
         logger.info(f"Evaluation reward: {reward_total}")
         self.evaluation_rewards.append(reward_total)
 
+    def get_q_values(self, state):
+        """
+        Not needed - see get_target_q_values and get_policy_q_values
+        :param state:
+        :return:
+        """
+        raise RuntimeError
+
 
 if __name__ == '__main__':
     from reinforcement_learning.models.dense_model import DenseModel

@@ -1,12 +1,14 @@
 import logging
-from typing import List
+from typing import List, Union
+
+from tensorflow.python.keras import backend as K
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.base_options import BaseTrainerOptions
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
-from tensorflow.python.keras import backend as K
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BaseTrainer:
     def __init__(self,
                  model: BaseModel,
-                 env: BaseQEnv,
+                 env: Union[BaseQEnv, BaseTimeSensitiveEnv],
                  hyperparameters: QLearningHyperparameters,
                  options: BaseTrainerOptions):
         self.model = model
