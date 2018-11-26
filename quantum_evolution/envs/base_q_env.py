@@ -27,7 +27,7 @@ class BaseQEnv:
     def step(self, action) -> Tuple[np.ndarray, float, bool, object]:
         raise NotImplementedError
 
-    def render(self, mode='human'):
+    def render(self):
         raise NotImplementedError
 
     def seed(self, seed=None):

@@ -1,4 +1,4 @@
-from typing import Sequence, Callable, Any
+from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,6 +6,7 @@ from qutip import Qobj, mesolve, sigmax, sigmay, sigmaz, Options, fidelity
 
 from quantum_evolution.plotter.bloch_animator import BlochAnimator
 from quantum_evolution.simulations.base_simulation import HamiltonianData
+from quantum_evolution.utils.protocol_utils import get_h_list, get_H1_coeff
 
 
 def evaluate_protocol(
@@ -41,46 +42,8 @@ def evaluate_protocol(
 
     bloch_animation = BlochAnimator([result], static_states=[initial_state, target_state])
     bloch_animation.generate_animation()
+    bloch_animation.save(f"fidelity_{fidelity_:.3f}.mp4")
     bloch_animation.show()
-
-
-def get_h_list(protocol: Sequence[int]) -> Sequence[int]:
-    """
-    Gets a list of h_x's for the given protocol.
-    :param protocol:
-    :return:
-    """
-    h_list = []
-    current_h_x = -4
-
-    for i in range(len(protocol)):
-        if protocol[i] == 1:
-            current_h_x *= -1
-        h_list.append(current_h_x)
-
-    return h_list
-
-
-def get_H1_coeff(t: float, N: int, h_list: Sequence[int]) -> Callable[[float, Any], float]:
-    """
-    Gets the H1_coeff function that is required for the hamiltonian.
-    :param t: Total duration
-    :param N: Number of steps
-    :param h_list: List of h_x's (given from get_h_list())
-    :return: H1_coeff - a function that returns the coefficient of the time-dependent part of the hamiltonian.
-    """
-    t_list = np.linspace(0, t, N + 1)
-
-    def H1_coeff(t: float, args: Any) -> float:
-        if t < 0:
-            return 0
-        if t > t_list[-1]:
-            return 0
-
-        index = int(np.argmax(t_list > t) - 1)
-        return h_list[index]
-
-    return H1_coeff
 
 
 def plot_h(t: float, protocol: Sequence[int]):
@@ -101,7 +64,7 @@ def plot_h(t: float, protocol: Sequence[int]):
     t_list = np.linspace(0, t, len(protocol) * 20)
     plt.plot(t_list, [H1_coeff(t, None) for t in t_list], '-')
 
-    ax.set_xlim([0, t * 1.1])
+    ax.set_xlim([0, t])
     ax.set_ylim([-4.2, 4.2])
     ax.yaxis.set_ticks(np.arange(-4, 4, 2))
     plt.show()

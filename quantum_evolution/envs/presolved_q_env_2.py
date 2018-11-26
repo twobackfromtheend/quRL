@@ -6,17 +6,16 @@ import numpy as np
 from qutip import Qobj, fidelity, sigmax, sigmay, sigmaz
 
 from quantum_evolution.envs.base_q_env import BaseQEnv
-from quantum_evolution.plotter.bloch_figure import BlochFigure
 from quantum_evolution.simulations.base_simulation import HamiltonianData
 from quantum_evolution.simulations.env_simulation import EnvSimulation
+from quantum_evolution.utils.protocol_utils import convert_bit_list_to_int
 
 logger = logging.getLogger(__name__)
 
 
-class QEnv3(BaseQEnv):
+class PresolvedQEnv2(BaseQEnv):
     """
-    Copy of QEnv2 with fidelity as an added feature
-    state / observation: S = (t, h_x(t), fidelity)
+    state / observation: S = (t, h_x(t))
     action: A = 0, 1; corresponding to stay (dh = 0), switch sign (dh = +-8).
     """
 
@@ -36,17 +35,17 @@ class QEnv3(BaseQEnv):
         self.current_step: int = 0
         self.current_h_x = None
         self.bloch_figure = None
-        logger.info(f"Created QEnv2 with N: {N}, t: {t}")
+
+        self.current_protocol = []
+        self.presolved_data = {}
+
+        logger.info(f"Created PresolvedQEnv2 with N: {N}, t: {t}")
 
     def step(self, action: int):
         assert action == 0 or action == 1, 'Action has to be 0 or 1.'
         self.current_h_x = self.current_h_x if action is 0 else -self.current_h_x
-        # self.current_h_x *= -1 ** action  # equivalent to above
-        t_list = np.linspace(0, self.dt, 50)
-        self.simulation = EnvSimulation(self.hamiltonian, psi0=self.current_state, t_list=t_list,
-                                        e_ops=[sigmax(), sigmay(), sigmaz()])
-        self.simulation.solve_with_coefficient(self.current_h_x)
-        self.current_state = self.simulation.result.states[-1]
+
+        self.current_protocol.append(action)
 
         reward = self.get_reward()
 
@@ -55,30 +54,36 @@ class QEnv3(BaseQEnv):
         return self.get_state(), reward, done, {}
 
     def render(self):
-        if self.bloch_figure is None:
-            self.bloch_figure = BlochFigure(static_states=(self.target_state,))
-        self.bloch_figure.update(self.simulation.result.states)
+        raise NotImplementedError
 
     def get_reward(self) -> float:
         if self.current_step != self.N - 1:
             return 0
 
-        _fidelity = fidelity(self.current_state, self.target_state)
-        return _fidelity ** 2 * 200  # As per paper's definition of fidelity, * 200 to allow softmax to work properly.
+        protocol_int = convert_bit_list_to_int(self.current_protocol)
+        if protocol_int in self.presolved_data:
+            return self.presolved_data[protocol_int]
+
+        simulation = EnvSimulation(self.hamiltonian, psi0=self.initial_state,
+                                   t_list=np.linspace(0, self.t, self.N * 10),
+                                   e_ops=[sigmax(), sigmay(), sigmaz()])
+        simulation.solve_with_actions(self.current_protocol, self.N)
+        final_state = simulation.result.states[-1]
+
+        _fidelity = fidelity(final_state, self.target_state) ** 2
+        self.presolved_data[protocol_int] = _fidelity
+        return _fidelity
 
     def reset(self) -> np.ndarray:
-        if self.bloch_figure is not None:
-            self.bloch_figure.reset()
         self.current_step = 0
         self.current_h_x = self.initial_h_x
-        # Override simulation
-        t_list = np.linspace(0, self.dt, 50)
-        self.simulation = EnvSimulation(self.hamiltonian, psi0=self.initial_state, t_list=t_list,
-                                        e_ops=[sigmax(), sigmay(), sigmaz()])
+        self.current_protocol = []
+
+        self.simulation = 1  # Placeholder value
         return super().reset()
 
     def get_state(self) -> np.ndarray:
-        return np.array((self.current_step, self.current_h_x, fidelity(self.current_state, self.target_state)))
+        return np.array((self.current_step * self.dt, self.current_h_x))
 
     def get_random_action(self):
         return random.getrandbits(1)
