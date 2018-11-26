@@ -4,9 +4,12 @@ from reinforcement_learning.runners.presets.exploration_presets import Explorati
 from reinforcement_learning.runners.presets.model_presets import ModelPreset
 from reinforcement_learning.runners.trainer_runner import run
 from reinforcement_learning.runners.utils.quantum_variables import get_quantum_variables
+from reinforcement_learning.trainers.dqn_options import DQNTrainerOptions
 from reinforcement_learning.trainers.dqn_trainer import DQNTrainer
 
 TRAINER = DQNTrainer
+TRAINER_OPTIONS = DQNTrainerOptions()
+
 ENV = EnvPreset.QENV3
 MODEL = ModelPreset.DEFAULT
 
@@ -15,18 +18,17 @@ DISCOUNT_RATE = DiscountRatePreset.INCREASING_20000
 EXPLORATION = ExplorationPreset.EPSILON_08
 T = 0.5
 
-RENDER = False
 
 initial_state, target_state, hamiltonian_datas, N = get_quantum_variables(T)
 
 run(
-    trainer=TRAINER, model_preset=MODEL, env_preset=ENV, episodes=EPISODES, discount_rate=DISCOUNT_RATE,
-    exploration_preset=EXPLORATION, render=RENDER,
+    trainer=TRAINER, model=MODEL, env=ENV, episodes=EPISODES, discount_rate=DISCOUNT_RATE, exploration=EXPLORATION,
     env_kwargs={
         'hamiltonian': hamiltonian_datas,
         't': T,
         'N': N,
         'initial_state': initial_state,
         'target_state': target_state,
-    }
+    },
+    trainer_options=TRAINER_OPTIONS
 )

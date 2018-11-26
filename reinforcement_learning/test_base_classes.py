@@ -5,6 +5,7 @@ from qutip import rand_ket
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.models.dense_model import DenseModel
+from reinforcement_learning.trainers.base_classes.base_options import BaseTrainerOptions
 from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
 
@@ -21,10 +22,10 @@ class TestClasses(unittest.TestCase):
 
     def test_base_trainer(self):
         model = DenseModel(5, 5)
-        trainer = BaseTrainer(model, None, QLearningHyperparameters(0.8), False)
+        trainer = BaseTrainer(model, None, QLearningHyperparameters(0.8), BaseTrainerOptions())
 
         with self.assertRaises(NotImplementedError):
-            trainer.train()
+            trainer.train(1)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Callable
+from typing import Union
 
 import numpy as np
 
@@ -10,6 +10,7 @@ from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
+from reinforcement_learning.trainers.dqn_options import DQNTrainerOptions
 from reinforcement_learning.trainers.policies.epsilon_greedy import EpsilonGreedyPolicy
 from reinforcement_learning.trainers.policies.softmax import SoftmaxPolicy
 from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import ExperienceReplayHandler, \
@@ -24,8 +25,8 @@ class DQNTrainer(BaseTrainer):
     """
 
     def __init__(self, model: BaseModel, env: BaseQEnv, hyperparameters: QLearningHyperparameters,
-                 with_tensorboard: bool):
-        super().__init__(model, env, hyperparameters, with_tensorboard)
+                 options: DQNTrainerOptions):
+        super().__init__(model, env, hyperparameters, options)
         self.target_model = model.create_copy()
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
@@ -34,14 +35,15 @@ class DQNTrainer(BaseTrainer):
         self.step_number: int = 0
 
     @log_process(logger, 'training')
-    def train(self, episodes: int = 1000, render: bool = False,
-              save_every: int = 1000,
-              evaluate_every: int = 50,
-              update_target_every: int = 1,
-              update_target_soft: bool = True,
-              update_target_tau: float = 0.01,
-              learning_rate_override: Callable[[int], float] = None):
+    def train(self, episodes: int = 1000):
         exploration = self.hyperparameters.exploration_options
+        learning_rate_override = self.options.learning_rate_override
+        update_target_every = self.options.update_target_every
+        update_target_soft = self.options.update_target_soft
+        update_target_tau = self.options.update_target_tau
+        render = self.options.render
+        evaluate_every = self.options.evaluate_every
+        save_every = self.options.save_every
 
         if self.tensorboard:
             self.tensorboard = create_callback(self.model.model)
@@ -190,10 +192,6 @@ class DQNTrainer(BaseTrainer):
         else:
             self.target_model.model.set_weights(self.model.model.get_weights())
 
-    @log_process(logger, "saving model")
-    def save_model(self):
-        self.model.save_model(self.__class__.__name__)
-
     @log_process(logger, "evaluating model")
     def evaluate_model(self, render, tensorboard_batch_number: int = None):
         if self.evaluation_tensorboard is None and tensorboard_batch_number is not None:
@@ -232,17 +230,16 @@ if __name__ == '__main__':
 
     EPISODES = 20000
 
-
     trainer = DQNTrainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
-            discount_rate,
+            0.95,
             ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.5, epsilon_decay=0.999,
                                limiting_value=0.1)
             # ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),
-        with_tensorboard=True
+        options=DQNTrainerOptions()
     )
-    trainer.train(render=True, episodes=EPISODES, update_target_tau=0.05)
+    trainer.train(episodes=EPISODES)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
     logger.info(f"last evaluation reward: {trainer.evaluation_rewards[-1]}")

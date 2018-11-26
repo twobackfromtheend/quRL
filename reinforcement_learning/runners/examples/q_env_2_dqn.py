@@ -10,13 +10,13 @@ from reinforcement_learning.trainers.dqn_trainer import DQNTrainer
 TRAINER = DQNTrainer
 TRAINER_OPTIONS = DQNTrainerOptions()
 
-ENV = EnvPreset.PRESOLVED_QENV2
-MODEL = ModelPreset.DENSE_MODEL_LR_1_4
+ENV = EnvPreset.QENV2
+MODEL = ModelPreset.DEFAULT
 
 EPISODES = 20000
 DISCOUNT_RATE = DiscountRatePreset.INCREASING_20000
 EXPLORATION = ExplorationPreset.EPSILON_08
-T = 0.5
+T = 2.4
 
 
 initial_state, target_state, hamiltonian_datas, N = get_quantum_variables(T)
