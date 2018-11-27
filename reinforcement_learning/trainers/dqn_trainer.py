@@ -7,6 +7,7 @@ from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
+from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
@@ -24,8 +25,8 @@ class DQNTrainer(BaseTrainer):
     Performs a gradient update on each episode.
     """
 
-    def __init__(self, model: BaseModel, env: BaseQEnv, hyperparameters: QLearningHyperparameters,
-                 options: DQNTrainerOptions):
+    def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
+                 hyperparameters: QLearningHyperparameters, options: DQNTrainerOptions):
         super().__init__(model, env, hyperparameters, options)
         self.target_model = model.create_copy()
         self.evaluation_tensorboard = None
@@ -230,6 +231,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
+
     time_sensitive = False
     env = CartPoleTSEnv(time_sensitive=time_sensitive)
     inputs = 5 if time_sensitive else 4

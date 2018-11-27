@@ -7,12 +7,11 @@ from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
-from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
+from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
 from reinforcement_learning.trainers.dqn_options import DQNTrainerOptions
-from reinforcement_learning.trainers.policies.epsilon_greedy import EpsilonGreedyPolicy
-from reinforcement_learning.trainers.policies.softmax import SoftmaxPolicy
+from reinforcement_learning.trainers.dqn_trainer import DQNTrainer
 from reinforcement_learning.trainers.replay_handlers.episodic_experience_replay_handler import \
     EpisodicExperienceReplayHandler
 from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import InsufficientExperiencesError
@@ -20,20 +19,15 @@ from reinforcement_learning.trainers.replay_handlers.experience_replay_handler i
 logger = logging.getLogger(__name__)
 
 
-class DRQNTrainer(BaseTrainer):
+class DRQNTrainer(DQNTrainer):
     """
     Performs a gradient update on each episode.
     """
 
-    def __init__(self, model: BaseModel, env: BaseQEnv, hyperparameters: QLearningHyperparameters,
-                 options: DQNTrainerOptions):
+    def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
+                 hyperparameters: QLearningHyperparameters, options: DQNTrainerOptions):
         super().__init__(model, env, hyperparameters, options)
-        self.target_model = model.create_copy()
-        self.evaluation_tensorboard = None
-        self.evaluation_rewards = []
         self.replay_handler = EpisodicExperienceReplayHandler()
-        self.episode_number: int = 0
-        self.step_number: int = 0
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000):
@@ -141,95 +135,6 @@ class DRQNTrainer(BaseTrainer):
             losses.append(loss)
             # TODO: Currently only has last loss.
         return losses
-
-    def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
-        """
-        Calculates targets based on done.
-        If done,
-            target = reward
-        If not done,
-            target = r + gamma * max(q_values(next_state))
-        :param rewards:
-        :param next_states:
-        :param dones:
-        :return: Targets - 1D np.array
-        """
-        # Targets initialised w/ done == True steps
-        targets = rewards.copy()
-
-        # Targets for done == False steps calculated with target network
-        done_false_indices = dones == False
-        gamma = self.hyperparameters.discount_rate(self.episode_number)
-        target_q_values = self.target_model.model.predict(next_states[done_false_indices])
-        targets[done_false_indices] = rewards[done_false_indices] + gamma * np.max(target_q_values, axis=1)
-        return targets
-
-    def get_policy_q_values(self, state) -> np.ndarray:
-        logger.debug("Get policy Q values")
-        q_values = self.model.model.predict(state.reshape((1, -1)))
-        logger.debug(f"Q values {q_values}")
-        return q_values[0]
-
-    def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
-        exploration = self.hyperparameters.exploration_options
-        q_values = self.get_policy_q_values(observation)
-
-        if exploration.method == ExplorationMethod.EPSILON:
-            return EpsilonGreedyPolicy.get_action(
-                exploration.get_epsilon(self.episode_number), q_values, self.env.get_random_action, log_func)
-        elif exploration.method == ExplorationMethod.SOFTMAX:
-            return SoftmaxPolicy.get_action(q_values, exploration.get_B_RL(self.episode_number), log_func)
-        else:
-            raise ValueError(f"Unknown exploration method: {exploration.method}")
-
-    def update_target_model(self, soft: bool, tau: float):
-        """
-        Update target model's weights with policy model's.
-        If soft,
-            theta_target <- tau * theta_policy + (1 - tau) * theta_target
-            tau << 1.
-        :param soft:
-        :param tau: tau << 1 (recommended: 0.001)
-        :return:
-        """
-        if soft:
-            self.target_model.model.set_weights(
-                tau * np.array(self.model.model.get_weights())
-                + (1 - tau) * np.array(self.target_model.model.get_weights())
-            )
-        else:
-            self.target_model.model.set_weights(self.model.model.get_weights())
-
-    @log_process(logger, "evaluating model")
-    def evaluate_model(self, render, tensorboard_batch_number: int = None):
-        if self.evaluation_tensorboard is None and tensorboard_batch_number is not None:
-            self.evaluation_tensorboard = create_callback(self.model.model)
-        done = False
-        reward_total = 0
-        observation = self.env.reset()
-        actions = []
-        while not done:
-            action = int(np.argmax(self.get_policy_q_values(observation)))
-            actions.append(action)
-            new_observation, reward, done, info = self.env.step(action)
-
-            observation = new_observation
-            reward_total += reward
-            if render:
-                self.env.render()
-        if tensorboard_batch_number is not None:
-            tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
-        logger.info(f"actions: {actions}")
-        logger.info(f"Evaluation reward: {reward_total}")
-        self.evaluation_rewards.append(reward_total)
-
-    def get_q_values(self, state):
-        """
-        Not needed - see get_target_q_values and get_policy_q_values
-        :param state:
-        :return:
-        """
-        raise RuntimeError
 
 
 if __name__ == '__main__':
