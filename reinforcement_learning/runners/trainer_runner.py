@@ -49,7 +49,7 @@ if __name__ == '__main__':
     TRAINER_OPTIONS = DQNTrainerOptions(render=True)
 
     ENV = EnvPreset.CARTPOLE_TS
-    MODEL = ModelPreset.DEFAULT
+    MODEL = ModelPreset.DENSE_MODEL
 
     EPISODES = 20000
     DISCOUNT_RATE = DiscountRatePreset.CONST_97

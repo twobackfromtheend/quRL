@@ -47,28 +47,3 @@ class DenseModel(BaseModel):
         optimizer = keras.optimizers.Adam(lr=self.learning_rate)
         model.compile(loss=self.loss_fn, optimizer=optimizer, metrics=['mae'])
         return model
-
-    def get_loss_fn(self, loss_fn_input):
-        """
-        Handles huber loss input.
-        Huber loss with clip delta (e.g. 200) can be specified with huber_CLIPDELTA (e.g. "huber_200")
-        :param loss_fn_input:
-        :return:
-        """
-        if isinstance(loss_fn_input, str) and loss_fn_input.startswith('huber_'):
-            return self.get_huber_loss(float(loss_fn_input[6:]))
-        else:
-            return loss_fn_input
-
-    @staticmethod
-    def get_huber_loss(clip_delta: float = 200) -> Callable:
-        def loss_fn(y_true, y_pred, clip_delta=clip_delta):
-            error = y_true - y_pred
-            cond = tf.keras.backend.abs(error) < clip_delta
-
-            squared_loss = 0.5 * tf.keras.backend.square(error)
-            linear_loss = clip_delta * (tf.keras.backend.abs(error) - 0.5 * clip_delta)
-
-            return tf.where(cond, squared_loss, linear_loss)
-
-        return loss_fn
