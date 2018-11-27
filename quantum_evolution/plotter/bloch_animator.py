@@ -55,7 +55,7 @@ class BlochAnimator:
         )
 
     @log_process(logger, 'saving animation')
-    def save(self, filename: str = 'bloch_sphere.mp4', fps: int = 30):
+    def save(self, filename: str = 'bloch_sphere.mp4', fps: int = 60):
         if not self.anim:
             raise AnimationNotGeneratedError()
         self.anim.save(filename, writer="ffmpeg", fps=fps)
