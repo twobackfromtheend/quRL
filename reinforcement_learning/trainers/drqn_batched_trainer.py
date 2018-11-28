@@ -177,17 +177,6 @@ class DRQNBatchedTrainer(DQNTrainer):
 
         return losses
 
-    def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
-        # Targets initialised w/ done == True steps
-        targets = rewards.copy()
-
-        # Targets for done == False steps calculated with target network
-        done_false_indices = dones == False
-        gamma = self.hyperparameters.discount_rate(self.episode_number)
-        target_q_values = self.target_model.model.predict(next_states[done_false_indices])
-        targets[done_false_indices] = rewards[done_false_indices] + gamma * np.max(target_q_values, axis=1)
-        return targets
-
     def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
         if len(self.step_buffer) < self.options.rnn_steps:
             return self.env.get_random_action()
