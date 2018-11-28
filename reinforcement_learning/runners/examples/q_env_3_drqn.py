@@ -1,20 +1,20 @@
 from functools import partial
 
-from reinforcement_learning.models.lstm_model import LSTMModel
+from reinforcement_learning.models.lstm_non_stateful_model import LSTMNonStatefulModel
 from reinforcement_learning.runners.presets.discount_rate_presets import DiscountRatePreset
 from reinforcement_learning.runners.presets.env_presets import EnvPreset
 from reinforcement_learning.runners.presets.exploration_presets import ExplorationPreset
 from reinforcement_learning.runners.trainer_runner import run
 from reinforcement_learning.runners.utils.quantum_variables import get_quantum_variables
+from reinforcement_learning.trainers.drqn_batched_trainer import DRQNBatchedTrainer
 from reinforcement_learning.trainers.drqn_options import DRQNTrainerOptions
-from reinforcement_learning.trainers.drqn_trainer import DRQNTrainer
 
-TRAINER = DRQNTrainer
-rnn_steps = 3
+TRAINER = DRQNBatchedTrainer
+rnn_steps = 5
 TRAINER_OPTIONS = DRQNTrainerOptions(rnn_steps=rnn_steps, update_target_soft=False)
 
 ENV = EnvPreset.QENV3
-MODEL = partial(LSTMModel, rnn_steps=rnn_steps, learning_rate=3e-3,
+MODEL = partial(LSTMNonStatefulModel, rnn_steps=rnn_steps, learning_rate=3e-3,
                 inner_activation='relu', output_activation='linear')
 
 EPISODES = 20000
