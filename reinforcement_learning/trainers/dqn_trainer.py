@@ -75,7 +75,7 @@ class DQNTrainer(BaseTrainer):
                 except InsufficientExperiencesError:
                     pass
 
-                if i % update_target_every == 0:
+                if self.step_number % update_target_every == 0:
                     self.update_target_model(update_target_soft, update_target_tau)
 
                 observation = new_observation

@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 
@@ -10,8 +10,8 @@ from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
-from reinforcement_learning.trainers.dqn_options import DQNTrainerOptions
 from reinforcement_learning.trainers.dqn_trainer import DQNTrainer
+from reinforcement_learning.trainers.drqn_options import DRQNTrainerOptions
 from reinforcement_learning.trainers.replay_handlers.episodic_experience_replay_handler import \
     EpisodicExperienceReplayHandler
 from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import InsufficientExperiencesError
@@ -25,9 +25,10 @@ class DRQNTrainer(DQNTrainer):
     """
 
     def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
-                 hyperparameters: QLearningHyperparameters, options: DQNTrainerOptions):
+                 hyperparameters: QLearningHyperparameters, options: DRQNTrainerOptions):
         super().__init__(model, env, hyperparameters, options)
         self.replay_handler = EpisodicExperienceReplayHandler()
+        self.step_buffer: List[np.ndarray] = []  # list of states
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000):
@@ -45,7 +46,8 @@ class DRQNTrainer(DQNTrainer):
         reward_totals = []
         for i in range(episodes):
             logger.info(f"\nEpisode {i}/{episodes}")
-            observation = self.env.reset()
+            self.step_buffer = []
+            state = self.env.reset()
             if learning_rate_override:
                 self.update_learning_rate(learning_rate_override(i))
             logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
@@ -55,22 +57,25 @@ class DRQNTrainer(DQNTrainer):
             done = False
 
             while not done:
-                action = self.get_action(observation)
+                self.step_buffer.append(state)
+                action = self.get_action(self.get_observation())
 
                 actions.append(action)
-                new_observation, reward, done, info = self.env.step(action)
-                logger.debug(f"new_observation: {new_observation}")
+                new_state, reward, done, info = self.env.step(action)
+                logger.debug(f"new_state: {new_state}")
 
-                self.replay_handler.record_experience(observation, action, reward, new_observation, done)
+                self.replay_handler.record_experience(state, action, reward, new_state, done)
 
-                if i % update_target_every == 0:
+                if self.step_number % update_target_every == 0:
                     self.update_target_model(update_target_soft, update_target_tau)
 
-                observation = new_observation
+                state = new_state
                 reward_total += reward
                 if render:
                     self.env.render()
                 self.step_number += 1
+
+            self.reset_model_state()
 
             try:
                 losses = self.batch_episode_experience_replay()
@@ -100,54 +105,149 @@ class DRQNTrainer(DQNTrainer):
         self.reward_totals = reward_totals
         self.save_model()
 
+    def get_observation(self, step_buffer=None):
+        """
+        :param step_buffer: Defaults to self.step_buffer
+        :return:
+        """
+        rnn_steps = self.options.rnn_steps
+        if step_buffer is None:
+            step_buffer = self.step_buffer
+        step_buffer_length = len(step_buffer)
+        if step_buffer_length >= rnn_steps:
+            return np.array(step_buffer[-rnn_steps:])
+        else:
+            # Fill list with all initial_states ie. [0, 0, 0, 1, 2] where there are only 3 steps in buffer
+            observation = [step_buffer[0] for _ in range(rnn_steps)]
+            for i, j in enumerate(range(rnn_steps - step_buffer_length, rnn_steps)):
+                # i is a counter from 0
+                # j is a counter to fill up the last values with the existing values
+                observation[j] = step_buffer[i]
+            return np.array(observation)
+
     def batch_episode_experience_replay(self):
         losses = []
         for episode in self.replay_handler.generator():
-            # General machinery
-            states = []
-            actions = []
-            rewards = []
-            next_states = []
-            dones = []
-            for experience in episode:
-                states.append(experience.state)
-                actions.append(experience.action)
-                rewards.append(experience.reward)
-                next_states.append(experience.next_state)
-                dones.append(experience.done)
+            # Pick random step to train on
+            for step_number in range(len(episode)):
+                # General machinery
+                states = []
+                actions = []
+                rewards = []
+                next_states = []
+                dones = []
+                for i in reversed(range(self.options.rnn_steps)):
+                    experience_index = 0 if step_number < i else step_number - i
+                    experience = episode[experience_index]
+                    states.append(experience.state)
+                    actions.append(experience.action)
+                    rewards.append(experience.reward)
+                    # This gives next state of [0, 0, 1] for state of [0, 0, 0] (and so on)
+                    next_state = experience.state if step_number < i else experience.next_state
+                    next_states.append(next_state)
+                    dones.append(experience.done)
 
-            # Converting to np.arrays
-            states = np.array(states)
-            actions = np.array(actions)
-            rewards = np.array(rewards)
-            next_states = np.array(next_states)
-            dones = np.array(dones)
+                # Converting to np.arrays
+                states = np.array(states).reshape(self.get_rnn_shape())
+                action = episode[step_number].action
+                reward = episode[step_number].reward
+                done = episode[step_number].done
+                next_states = np.array(next_states).reshape(self.get_rnn_shape())
+                # Get targets (refactored to handle different calculation based on done)
+                target = self.get_target(reward, next_states, done)
 
-            # Get targets (refactored to handle different calculation based on done)
-            targets = self.get_targets(rewards, next_states, dones)
+                # Create target_vecs
+                target_vec = self.target_model.model.predict(states)[0]
 
-            # Create target_vecs
-            target_vecs = self.target_model.model.predict(states)
-            for i, action in enumerate(actions):
                 # Set target values in target_vecs
-                target_vecs[i, action] = targets[i]
-            loss = self.model.model.train_on_batch(states, target_vecs)
-            losses.append(loss)
-            # TODO: Currently only has last loss.
+                target_vec[action] = target
+                loss = self.model.model.train_on_batch(states, target_vec.reshape((1, -1)))
+                losses.append(loss)
+
+            self.reset_model_state()
+
         return losses
+
+    def get_target(self, reward: float, next_states: np.ndarray, done: bool) -> float:
+        """
+        Calculates target based on done.
+        If done,
+            target = reward
+        If not done,
+            target = r + gamma * max(q_values(next_state))
+        :param reward:
+        :param next_states:
+        :param done:
+        :return:
+        """
+        if done:
+            return reward
+        gamma = self.hyperparameters.discount_rate(self.episode_number)
+        target_q_values = self.target_model.model.predict(next_states)
+        target = reward + gamma * np.max(target_q_values)
+        return target
+
+    def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
+        raise RuntimeError
+
+    def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
+        if len(self.step_buffer) < self.options.rnn_steps:
+            return self.env.get_random_action()
+
+        return super().get_action(observation, log_func)
+
+    def get_policy_q_values(self, state) -> np.ndarray:
+        logger.debug("Get policy Q values")
+        q_values = self.model.model.predict(state.reshape(self.get_rnn_shape()))
+        logger.debug(f"Q values {q_values}")
+        return q_values[0]
+
+    @log_process(logger, "evaluating model")
+    def evaluate_model(self, render, tensorboard_batch_number: int = None):
+        if self.evaluation_tensorboard is None and tensorboard_batch_number is not None:
+            self.evaluation_tensorboard = create_callback(self.model.model)
+        done = False
+        reward_total = 0
+        state = self.env.reset()
+        actions = []
+        step_buffer = []
+        while not done:
+            step_buffer.append(state)
+            observation = self.get_observation(step_buffer)
+            action = int(np.argmax(self.get_policy_q_values(observation)))
+            actions.append(action)
+            new_state, reward, done, info = self.env.step(action)
+
+            state = new_state
+            reward_total += reward
+            if render:
+                self.env.render()
+        if tensorboard_batch_number is not None:
+            tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
+        logger.info(f"actions: {actions}")
+        logger.info(f"Evaluation reward: {reward_total}")
+        self.evaluation_rewards.append(reward_total)
+
+    def get_rnn_shape(self):
+        return 1, self.options.rnn_steps, -1
+
+    def reset_model_state(self):
+        self.model.model.reset_states()
 
 
 if __name__ == '__main__':
-    from reinforcement_learning.models.dense_model import DenseModel
+    from reinforcement_learning.models.lstm_model import LSTMModel
 
     logging.basicConfig(level=logging.INFO)
 
     from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
+
     time_sensitive = False
     env = CartPoleTSEnv(time_sensitive=time_sensitive)
     inputs = 5 if time_sensitive else 4
-    model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-                       inner_activation='relu', output_activation='linear')
+    rnn_steps = 3
+    model = LSTMModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=3e-3,
+                      inner_activation='relu', output_activation='linear')
 
     EPISODES = 20000
 
@@ -155,11 +255,11 @@ if __name__ == '__main__':
         model, env,
         hyperparameters=QLearningHyperparameters(
             0.95,
-            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=1.0, epsilon_decay=0.999,
+            ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.5, epsilon_decay=0.999,
                                limiting_value=0.1)
             # ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
         ),
-        options=DQNTrainerOptions(render=True)
+        options=DRQNTrainerOptions(rnn_steps=rnn_steps, update_target_soft=False, render=True)
     )
     trainer.train(episodes=EPISODES)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")
