@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from typing import Type, Union, Callable
 
 from reinforcement_learning.models.base_model import BaseModel
@@ -14,7 +15,7 @@ from reinforcement_learning.trainers.base_classes.hyperparameters import QLearni
 
 
 def run(trainer: Type[BaseTrainer],
-        model: Union[ModelPreset, Callable[[int, int], BaseModel]],
+        model: Union[ModelPreset, Callable[[int, int], BaseModel], partial[BaseModel]],
         env: Union[EnvPreset, EnvData],
         episodes: int,
         discount_rate: Union[DiscountRatePreset, DiscountRate],
