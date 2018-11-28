@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class DoubleDQNTrainer(DQNTrainer):
     """
-    Performs a gradient update on each episode.
+    Differs from DQN in that target calculation is based on the policy's chosen action, not argmax.
     """
 
     def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
