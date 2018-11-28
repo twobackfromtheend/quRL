@@ -20,7 +20,7 @@ MODEL = partial(LSTMNonStatefulModel, rnn_steps=rnn_steps, learning_rate=3e-3,
 EPISODES = 20000
 DISCOUNT_RATE = DiscountRatePreset.INCREASING_20000
 EXPLORATION = ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=1.0, epsilon_decay=0.9995,
-                                    limiting_value=0.8)
+                                    limiting_value=0.08)
 T = 0.5
 
 initial_state, target_state, hamiltonian_datas, N = get_quantum_variables(T)
