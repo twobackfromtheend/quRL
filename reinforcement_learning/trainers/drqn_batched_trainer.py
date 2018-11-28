@@ -19,9 +19,9 @@ from reinforcement_learning.trainers.replay_handlers.experience_replay_handler i
 logger = logging.getLogger(__name__)
 
 
-class DRQNTrainer(DQNTrainer):
+class DRQNBatchedTrainer(DQNTrainer):
     """
-    Performs a gradient update on each episode.
+    Required as different model is needed due to Keras inflexibility (need to specify batch size in model creation)
     """
 
     def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
@@ -129,23 +129,22 @@ class DRQNTrainer(DQNTrainer):
         losses = []
         for episode in self.replay_handler.generator():
             # Pick random step to train on
+            episode_states = []
+            episode_actions = []
+            episode_rewards = []
+            episode_next_states = []
+            episode_dones = []
             for step_number in range(len(episode)):
                 # General machinery
                 states = []
-                actions = []
-                rewards = []
                 next_states = []
-                dones = []
                 for i in reversed(range(self.options.rnn_steps)):
                     experience_index = 0 if step_number < i else step_number - i
                     experience = episode[experience_index]
                     states.append(experience.state)
-                    actions.append(experience.action)
-                    rewards.append(experience.reward)
                     # This gives next state of [0, 0, 1] for state of [0, 0, 0] (and so on)
                     next_state = experience.state if step_number < i else experience.next_state
                     next_states.append(next_state)
-                    dones.append(experience.done)
 
                 # Converting to np.arrays
                 states = np.array(states).reshape(self.get_rnn_shape())
@@ -154,41 +153,41 @@ class DRQNTrainer(DQNTrainer):
                 done = episode[step_number].done
                 next_states = np.array(next_states).reshape(self.get_rnn_shape())
                 # Get targets (refactored to handle different calculation based on done)
-                target = self.get_target(reward, next_states, done)
+                episode_next_states.append(next_states)
+                episode_rewards.append(reward)
+                episode_dones.append(done)
+                episode_states.append(states)
+                episode_actions.append(action)
 
-                # Create target_vecs
-                target_vec = self.target_model.model.predict(states)[0]
+            episode_states = np.squeeze(np.array(episode_states), axis=1)
+            episode_next_states = np.squeeze(np.array(episode_next_states), axis=1)
+            episode_rewards = np.array(episode_rewards)
+            episode_dones = np.array(episode_dones)
 
+            targets = self.get_targets(episode_rewards, episode_next_states, episode_dones)
+            target_vecs = self.target_model.model.predict(episode_states)
+            for i, action in enumerate(episode_actions):
                 # Set target values in target_vecs
-                target_vec[action] = target
-                loss = self.model.model.train_on_batch(states, target_vec.reshape((1, -1)))
-                losses.append(loss)
+                target_vecs[i, action] = targets[i]
+
+            loss = self.model.model.train_on_batch(episode_states, target_vecs)
+            losses.append(loss)
 
             self.reset_model_state()
 
         return losses
 
-    def get_target(self, reward: float, next_states: np.ndarray, done: bool) -> float:
-        """
-        Calculates target based on done.
-        If done,
-            target = reward
-        If not done,
-            target = r + gamma * max(q_values(next_state))
-        :param reward:
-        :param next_states:
-        :param done:
-        :return:
-        """
-        if done:
-            return reward
-        gamma = self.hyperparameters.discount_rate(self.episode_number)
-        target_q_values = self.target_model.model.predict(next_states)
-        target = reward + gamma * np.max(target_q_values)
-        return target
-
     def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
-        raise RuntimeError
+        # Targets initialised w/ done == True steps
+        targets = rewards.copy()
+
+        # Targets for done == False steps calculated with target network
+        done_false_indices = dones == False
+        gamma = self.hyperparameters.discount_rate(self.episode_number)
+        print(next_states[done_false_indices].shape)
+        target_q_values = self.target_model.model.predict(next_states[done_false_indices])
+        targets[done_false_indices] = rewards[done_false_indices] + gamma * np.max(target_q_values, axis=1)
+        return targets
 
     def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
         if len(self.step_buffer) < self.options.rnn_steps:
@@ -236,7 +235,7 @@ class DRQNTrainer(DQNTrainer):
 
 
 if __name__ == '__main__':
-    from reinforcement_learning.models.lstm_stateful_model import LSTMStatefulModel
+    from reinforcement_learning.models.lstm_non_stateful_model import LSTMNonStatefulModel
 
     logging.basicConfig(level=logging.INFO)
 
@@ -246,12 +245,12 @@ if __name__ == '__main__':
     env = CartPoleTSEnv(time_sensitive=time_sensitive)
     inputs = 5 if time_sensitive else 4
     rnn_steps = 3
-    model = LSTMStatefulModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=3e-3,
-                              inner_activation='relu', output_activation='linear')
+    model = LSTMNonStatefulModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=3e-3,
+                                 inner_activation='relu', output_activation='linear')
 
     EPISODES = 20000
 
-    trainer = DRQNTrainer(
+    trainer = DRQNBatchedTrainer(
         model, env,
         hyperparameters=QLearningHyperparameters(
             0.95,
