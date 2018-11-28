@@ -3,13 +3,17 @@ from typing import Union, Callable
 
 import tensorflow as tf
 from tensorflow.python.keras import Sequential, Model
-from tensorflow.python.keras.models import save_model
+from tensorflow.python.keras.models import save_model, load_model
 
 
 class BaseModel:
 
-    def __init__(self, **kwargs):
-        self.model = self.build_model()
+    def __init__(self, load_from_filepath: str=None, **kwargs):
+        self.load_from_filepath = load_from_filepath  # Needed for copying with __dict__.
+        if load_from_filepath is not None:
+            self.model = load_model(load_from_filepath)
+        else:
+            self.model = self.build_model()
 
     def build_model(self) -> Union[Sequential, Model]:
         raise NotImplementedError
