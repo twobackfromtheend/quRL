@@ -15,7 +15,7 @@ from reinforcement_learning.trainers.base_classes.hyperparameters import QLearni
 
 
 def run(trainer: Type[BaseTrainer],
-        model: Union[ModelPreset, Callable[[int, int], BaseModel], partial[BaseModel]],
+        model: Union[ModelPreset, Callable[[int, int], BaseModel], partial],
         env: Union[EnvPreset, EnvData],
         episodes: int,
         discount_rate: Union[DiscountRatePreset, DiscountRate],
