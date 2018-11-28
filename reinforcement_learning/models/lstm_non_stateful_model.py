@@ -2,16 +2,25 @@ import logging
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.layers import Dense, TimeDistributed, LSTM, CuDNNLSTM
+from tensorflow.keras.layers import Dense
 
 from logger_utils.logger_utils import log_process
 from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.models.utils import get_LSTM_layer
 
 logger = logging.getLogger(__name__)
 
+LSTM_LAYER = get_LSTM_layer()
 
-class LSTMModel(BaseModel):
 
+class LSTMNonStatefulModel(BaseModel):
+    """
+    Is not limited to a fixed batch_size.
+    Downside being that steps have to be repeated in memory
+    (ie [[0, 1, 2], [1, 2, 3], [2, 3, 4]])
+
+    May not lead to increased memory usage if properly implemented as pointers perhaps?
+    """
     def __init__(self, inputs: int, outputs: int, rnn_steps: int,
                  inner_activation=tf.nn.relu, output_activation='linear',
                  learning_rate=0.003,
@@ -29,18 +38,12 @@ class LSTMModel(BaseModel):
 
     @log_process(logger, 'building model')
     def build_model(self) -> keras.Sequential:
-        batch_size = 1
-
         model = keras.Sequential()
-        batch_input_shape = (batch_size, self.rnn_steps, self.inputs)
-        model.add(CuDNNLSTM(24, batch_input_shape=batch_input_shape, stateful=True, return_sequences=True))
-        model.add(CuDNNLSTM(24, batch_input_shape=batch_input_shape, stateful=True))
+        input_shape = (self.rnn_steps, self.inputs)
+        model.add(LSTM_LAYER(24, input_shape=input_shape, return_sequences=True))
+        model.add(LSTM_LAYER(24, input_shape=input_shape))
 
-        model.add(Dense(self.outputs))
-        #
-        # model.add(LSTM(48))
-
-        # model.add(Dense(self.outputs, activation=self.output_activation))
+        model.add(Dense(self.outputs, activation=self.output_activation))
         optimizer = keras.optimizers.Adam(lr=self.learning_rate)
         model.compile(loss=self.loss_fn, optimizer=optimizer, metrics=['mae'])
         return model
