@@ -184,7 +184,6 @@ class DRQNBatchedTrainer(DQNTrainer):
         # Targets for done == False steps calculated with target network
         done_false_indices = dones == False
         gamma = self.hyperparameters.discount_rate(self.episode_number)
-        print(next_states[done_false_indices].shape)
         target_q_values = self.target_model.model.predict(next_states[done_false_indices])
         targets[done_false_indices] = rewards[done_false_indices] + gamma * np.max(target_q_values, axis=1)
         return targets
