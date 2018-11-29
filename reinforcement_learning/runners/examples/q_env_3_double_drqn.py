@@ -13,7 +13,7 @@ TRAINER = DoubleDRQNBatchedTrainer
 rnn_steps = 10
 TRAINER_OPTIONS = DRQNTrainerOptions(rnn_steps=rnn_steps, update_target_soft=True)
 
-ENV = EnvPreset.QENV2
+ENV = EnvPreset.QENV3
 MODEL = partial(LSTMNonStatefulModel, rnn_steps=rnn_steps, learning_rate=3e-3,
                 inner_activation='relu', output_activation='linear')
 

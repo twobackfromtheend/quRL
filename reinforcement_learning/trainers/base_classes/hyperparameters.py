@@ -91,7 +91,8 @@ class ExplorationOptions:
         :return:
         """
         assert self.method == ExplorationMethod.SOFTMAX, "Calling get_B_RL when method is not set to SOFTMAX."
-        B_RL = self.softmax_total_episodes / (self.softmax_total_episodes - i)
+        i = min(i, self.softmax_total_episodes)
+        B_RL = self.starting_value * self.softmax_total_episodes / (self.softmax_total_episodes - i)
         return min(self.limiting_value, B_RL)
 
 
