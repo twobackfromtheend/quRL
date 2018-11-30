@@ -1,0 +1,5 @@
+qutip  # See http://qutip.org/docs/latest/installation.html
+gym
+numpy
+matplotlib
+# tensorflow or tensorflow-gpu
