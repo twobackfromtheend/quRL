@@ -58,6 +58,17 @@ It has additional parameter to plot static states, and methods to show or save t
 `BlochFigure` enables Bloch figure plotting by calling `update()` with states. 
 This enables usage with `envs`' `render` methods (which call the `BlochFigure.update(states)` method with new states for that step).
 
+`QEnv2` replicates an OpenAI gym env, with `render` and `step` and `reset` methods.
+It returns `(h_x, t)` as state. Reward is 0 for all steps except the last, where it is `fidelity ** 2`. 
+
+`QEnv3` is like `QEnv2`, but with `fidelity` as an additional value in state. State is thus `(h_x, t, fidelity)`.
+
+`QEnv2SingleSolve` solves for final state with all actions for a given protocol only once. 
+This means that it does not support `render` calls as the intermediate states are not calculated before all actions are taken.
+
+`PresolvedQEnv2` is like `QEnv2SingleSolve`, except it also stores the calculated fidelities (for a given protocol) to a `dict` to avoid calling `solve` for repeated protocols.
+This is not suitable for protocols with a large number of steps, but saves calculation on shorter protocols.
+
 ### Reinforcement learning
 
 A high-level `run()` function is available, taking in `TRAINER`, `TRAINER_OPTIONS`, `MODEL`, `ENV` parameters (among others).
