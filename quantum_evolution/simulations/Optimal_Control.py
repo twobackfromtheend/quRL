@@ -20,6 +20,7 @@ p_type = 'SINE' #Only for GRAPE
 n_ts = 60  # No. of timesteps
 evo_time = 3  # Total protocol duration
 
+"Optimal Control involves minimising fid_err_targ = 1 - fidelity"
 # fid = 0.33129935776847313 # but this is squared
 # fid = 0.57558609935  # unsquared
 
