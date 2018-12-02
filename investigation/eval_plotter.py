@@ -59,7 +59,7 @@ def plot_data(learning_runs: Sequence[LearningRun]):
     plt.colorbar(
         scalar_mappable,
         ticks=np.linspace(N_min, N_max, len(Ns)),
-        boundaries=np.linspace(N_min - Ns_step / 2, N_max + Ns_step / 2, len(Ns)),
+        boundaries=np.linspace(N_min - Ns_step / 2, N_max + Ns_step / 2, len(Ns) + 1),
         cax=cax
      )
 
