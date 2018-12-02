@@ -40,6 +40,7 @@ def run(trainer: Type[BaseTrainer],
     _trainer.train(episodes=episodes)
     print(f"max reward total: {max(_trainer.reward_totals)}")
     print(f"last evaluation reward: {_trainer.evaluation_rewards[-1]}")
+    return _trainer, _model
 
 
 if __name__ == '__main__':

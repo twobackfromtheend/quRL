@@ -26,13 +26,12 @@ class LSTMStatefulModel(BaseModel):
     as the latter involves repeating states)
     """
 
-    def __init__(self, inputs: int, outputs: int, rnn_steps: int,
+    def __init__(self, inputs: int, outputs: int,
                  inner_activation=tf.nn.relu, output_activation='linear',
                  learning_rate=0.003,
                  loss_fn='mse', **kwargs):
         logger.info(f'Creating LSTMStatefulModel with {inputs} inputs and {outputs} outputs.')
         self.inputs = inputs
-        self.rnn_steps = rnn_steps
         self.outputs = outputs
         self.inner_activation = inner_activation
         self.output_activation = output_activation
@@ -46,7 +45,7 @@ class LSTMStatefulModel(BaseModel):
         batch_size = 1
 
         model = keras.Sequential()
-        batch_input_shape = (batch_size, self.rnn_steps, self.inputs)
+        batch_input_shape = (batch_size, 1, self.inputs)
         model.add(LSTM_LAYER(24, batch_input_shape=batch_input_shape, stateful=True, return_sequences=True))
         model.add(LSTM_LAYER(24, batch_input_shape=batch_input_shape, stateful=True))
 
