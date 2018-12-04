@@ -5,7 +5,7 @@ import numpy as np
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
-from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.models.base_nn_model import BaseNNModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
@@ -24,7 +24,7 @@ class DRQNTrainer(DQNTrainer):
     Performs a gradient update on each episode.
     """
 
-    def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
+    def __init__(self, model: BaseNNModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
                  hyperparameters: QLearningHyperparameters, options: DRQNTrainerOptions):
         super().__init__(model, env, hyperparameters, options)
         self.replay_handler = EpisodicExperienceReplayHandler()
@@ -78,7 +78,7 @@ class DRQNTrainer(DQNTrainer):
             self.reset_model_state()
 
             try:
-                losses = self.batch_episode_experience_replay()
+                losses = self.episode_experience_replay()
             except InsufficientExperiencesError:
                 losses = []
                 pass
@@ -123,9 +123,9 @@ class DRQNTrainer(DQNTrainer):
                 # i is a counter from 0
                 # j is a counter to fill up the last values with the existing values
                 observation[j] = step_buffer[i]
-            return np.array(observation)
+        return np.array(observation)
 
-    def batch_episode_experience_replay(self):
+    def episode_experience_replay(self):
         losses = []
         for episode in self.replay_handler.generator():
             # Pick random step to train on
@@ -157,11 +157,11 @@ class DRQNTrainer(DQNTrainer):
                 target = self.get_target(reward, next_states, done)
 
                 # Create target_vecs
-                target_vec = self.target_model.model.predict(states)[0]
+                target_vec = self.target_model.predict(states)[0]
 
                 # Set target values in target_vecs
                 target_vec[action] = target
-                loss = self.model.model.train_on_batch(states, target_vec.reshape((1, -1)))
+                loss = self.model.train_on_batch(states, target_vec.reshape((1, -1)))
                 losses.append(loss)
 
             self.reset_model_state()
@@ -183,7 +183,7 @@ class DRQNTrainer(DQNTrainer):
         if done:
             return reward
         gamma = self.hyperparameters.discount_rate(self.episode_number)
-        target_q_values = self.target_model.model.predict(next_states)
+        target_q_values = self.target_model.predict(next_states)
         target = reward + gamma * np.max(target_q_values)
         return target
 
@@ -198,7 +198,7 @@ class DRQNTrainer(DQNTrainer):
 
     def get_policy_q_values(self, state) -> np.ndarray:
         logger.debug("Get policy Q values")
-        q_values = self.model.model.predict(state.reshape(self.get_rnn_shape()))
+        q_values = self.model.predict(state.reshape(self.get_rnn_shape()))
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
@@ -229,7 +229,7 @@ class DRQNTrainer(DQNTrainer):
         self.evaluation_rewards.append(reward_total)
 
     def get_rnn_shape(self):
-        return 1, self.options.rnn_steps, -1
+        return 1, 1, -1
 
     def reset_model_state(self):
         self.model.model.reset_states()
@@ -246,7 +246,7 @@ if __name__ == '__main__':
     env = CartPoleTSEnv(time_sensitive=time_sensitive)
     inputs = 5 if time_sensitive else 4
     rnn_steps = 3
-    model = LSTMStatefulModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=3e-3,
+    model = LSTMStatefulModel(inputs=inputs, outputs=2, learning_rate=3e-3,
                               inner_activation='relu', output_activation='linear')
 
     EPISODES = 20000

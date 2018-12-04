@@ -5,7 +5,7 @@ import numpy as np
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
-from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.models.base_nn_model import BaseNNModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
@@ -24,7 +24,7 @@ class DRQNBatchedTrainer(DQNTrainer):
     Required as different model is needed due to Keras inflexibility (need to specify batch size in model creation)
     """
 
-    def __init__(self, model: BaseModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
+    def __init__(self, model: BaseNNModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
                  hyperparameters: QLearningHyperparameters, options: DRQNTrainerOptions):
         super().__init__(model, env, hyperparameters, options)
         self.replay_handler = EpisodicExperienceReplayHandler()
@@ -165,12 +165,12 @@ class DRQNBatchedTrainer(DQNTrainer):
             episode_dones = np.array(episode_dones)
 
             targets = self.get_targets(episode_rewards, episode_next_states, episode_dones)
-            target_vecs = self.target_model.model.predict(episode_states)
+            target_vecs = self.target_model.predict(episode_states)
             for i, action in enumerate(episode_actions):
                 # Set target values in target_vecs
                 target_vecs[i, action] = targets[i]
 
-            loss = self.model.model.train_on_batch(episode_states, target_vecs)
+            loss = self.model.train_on_batch(episode_states, target_vecs)
             losses.append(loss)
 
             self.reset_model_state()
@@ -185,7 +185,7 @@ class DRQNBatchedTrainer(DQNTrainer):
 
     def get_policy_q_values(self, state) -> np.ndarray:
         logger.debug("Get policy Q values")
-        q_values = self.model.model.predict(state.reshape(self.get_rnn_shape()))
+        q_values = self.model.predict(state.reshape(self.get_rnn_shape()))
         logger.debug(f"Q values {q_values}")
         return q_values[0]
 
