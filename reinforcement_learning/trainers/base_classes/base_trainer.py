@@ -1,8 +1,6 @@
 import logging
 from typing import List, Union
 
-from tensorflow.python.keras import backend as K
-
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
@@ -33,7 +31,7 @@ class BaseTrainer:
         raise NotImplementedError
 
     def update_learning_rate(self, learning_rate: float):
-        K.set_value(self.model.model.optimizer.lr, learning_rate)
+        self.model.set_learning_rate(learning_rate)
 
     @log_process(logger, "saving model")
     def save_model(self):

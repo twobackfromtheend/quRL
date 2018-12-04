@@ -38,10 +38,10 @@ class DoubleDQNTrainer(DQNTrainer):
         done_false_next_states = next_states[done_false_indices]
 
         # Ask policy network to choose next actions
-        target_actions = np.argmax(self.model.model.predict(done_false_next_states), axis=1)
+        target_actions = np.argmax(self.model.predict(done_false_next_states), axis=1)
 
         # Evaluate Q values of the policy-network-chosen actions with the target network.
-        done_false_target_q_values = self.target_model.model.predict(done_false_next_states)
+        done_false_target_q_values = self.target_model.predict(done_false_next_states)
         done_false_targets = targets[done_false_indices]
         done_false_rewards = rewards[done_false_indices]
         for i, action in enumerate(target_actions):

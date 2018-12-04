@@ -5,7 +5,7 @@ from tensorflow import keras
 from tensorflow.keras.layers import Dense
 
 from logger_utils.logger_utils import log_process
-from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.models.base_nn_model import BaseNNModel
 from reinforcement_learning.models.utils import get_LSTM_layer
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 LSTM_LAYER = get_LSTM_layer()
 
 
-class LSTMStatefulModel(BaseModel):
+class LSTMStatefulModel(BaseNNModel):
     """
     Limited to a fixed batch size due to Keras, as batch_size is required param when creating network.
 
@@ -31,14 +31,12 @@ class LSTMStatefulModel(BaseModel):
                  learning_rate=0.003,
                  loss_fn='mse', **kwargs):
         logger.info(f'Creating LSTMStatefulModel with {inputs} inputs and {outputs} outputs.')
-        self.inputs = inputs
-        self.outputs = outputs
         self.inner_activation = inner_activation
         self.output_activation = output_activation
         self.learning_rate = learning_rate
         self.loss_fn = self.get_loss_fn(loss_fn)
 
-        super().__init__()
+        super().__init__(inputs, outputs)
 
     @log_process(logger, 'building model')
     def build_model(self) -> keras.Sequential:

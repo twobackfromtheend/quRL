@@ -1,16 +1,16 @@
 import logging
-from typing import Sequence, Callable
+from typing import Sequence
 
 import tensorflow as tf
 from tensorflow import keras
 
 from logger_utils.logger_utils import log_process
-from reinforcement_learning.models.base_model import BaseModel
+from reinforcement_learning.models.base_nn_model import BaseNNModel
 
 logger = logging.getLogger(__name__)
 
 
-class DenseModel(BaseModel):
+class DenseModel(BaseNNModel):
 
     def __init__(self, inputs: int, outputs: int,
                  layer_nodes: Sequence[int] = (24, 24),
@@ -19,8 +19,6 @@ class DenseModel(BaseModel):
                  learning_rate=0.003,
                  loss_fn='mse', **kwargs):
         logger.info(f'Creating DenseModel with {inputs} inputs and {outputs} outputs.')
-        self.inputs = inputs
-        self.outputs = outputs
         self.layer_nodes = layer_nodes
         self.inner_activation = inner_activation
         self.output_activation = output_activation
@@ -28,7 +26,7 @@ class DenseModel(BaseModel):
         self.learning_rate = learning_rate
         self.loss_fn = self.get_loss_fn(loss_fn)
 
-        super().__init__()
+        super().__init__(inputs, outputs)
 
     @log_process(logger, 'building model')
     def build_model(self) -> keras.Sequential:
