@@ -2,18 +2,20 @@ import logging
 from typing import Union
 
 import numpy as np
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.optimizers import Adam
 
 from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
+from reinforcement_learning.models.base_critic_model import BaseCriticModel
 from reinforcement_learning.models.base_nn_model import BaseNNModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.base_trainer import BaseTrainer
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
-    ExplorationMethod
+    ExplorationMethod, DDPGHyperparameters
 from reinforcement_learning.trainers.dqn_options import DQNTrainerOptions
-from reinforcement_learning.trainers.policies.epsilon_greedy import EpsilonGreedyPolicy
-from reinforcement_learning.trainers.policies.softmax import SoftmaxPolicy
+from reinforcement_learning.trainers.policies.ornstein_uhlenbeck import OrnsteinUhlenbeck
 from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import ExperienceReplayHandler, \
     InsufficientExperiencesError
 
@@ -26,14 +28,41 @@ class DDPGTrainer(BaseTrainer):
     """
 
     def __init__(self, model: BaseNNModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
-                 hyperparameters: QLearningHyperparameters, options: DQNTrainerOptions):
+                 hyperparameters: DDPGHyperparameters, options: DQNTrainerOptions,
+                 critic_model: BaseCriticModel):
         super().__init__(model, env, hyperparameters, options)
-        self.target_model = model.create_copy()
+        # self.model is the actor model
+        self.target_actor_model = model.create_copy()
+
+        self.critic_model = critic_model
+        self.target_critic_model = critic_model.create_copy()
+
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
         self.replay_handler = ExperienceReplayHandler()
         self.episode_number: int = 0
         self.step_number: int = 0
+
+        self.critic_action_input = self.critic_model.action_input
+        combined_inputs = []
+        state_inputs = []
+        for _input in self.critic_model.model.input:
+            if _input == self.critic_action_input:
+                combined_inputs.append([])
+            else:
+                combined_inputs.append(_input)
+                state_inputs.append(_input)
+        self.critic_action_input_idx = self.critic_model.model.input.index(self.critic_action_input)
+
+        combined_inputs[self.critic_action_input_idx] = self.model.model(state_inputs)
+
+        combined_output = self.critic_model.model(combined_inputs)
+
+        updates = Adam(lr=.001, clipnorm=1.).get_updates(
+            params=self.model.model.trainable_weights, loss=-K.mean(combined_output))
+
+        self.actor_train_fn = K.function(state_inputs + [K.learning_phase()],
+                                         [self.model.model(state_inputs)], updates=updates)
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000):
@@ -54,7 +83,11 @@ class DDPGTrainer(BaseTrainer):
             observation = self.env.reset()
             if learning_rate_override:
                 self.update_learning_rate(learning_rate_override(i))
-            logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
+            if isinstance(exploration, OrnsteinUhlenbeck):
+                exploration.reset_states()
+                logger.info(f"exploration method: OrnsteinUhlenbeck, theta: {exploration.theta}")
+            else:
+                logger.info(f"exploration method: {exploration.method}, value: {exploration.get_value(i)}")
 
             reward_total = 0
             losses = []
@@ -76,7 +109,7 @@ class DDPGTrainer(BaseTrainer):
                     pass
 
                 if self.step_number % update_target_every == 0:
-                    self.update_target_model(update_target_soft, update_target_tau)
+                    self.update_target_models(update_target_soft, update_target_tau)
 
                 observation = new_observation
                 reward_total += reward
@@ -85,11 +118,10 @@ class DDPGTrainer(BaseTrainer):
                 self.step_number += 1
 
             if self.tensorboard and losses:
-                losses = list(zip(*losses))
                 tf_log(self.tensorboard,
-                       ['train_loss', 'train_mae', 'reward'],
-                       [np.mean(losses[0]), np.mean(losses[1]), reward_total], i)
-            logger.info(f"actions: {actions}")
+                       ['train_loss', 'reward'],
+                       [np.mean(losses), reward_total], i)
+            logger.info(f"actions: {np.concatenate(actions)}")
             logger.info(f"Episode: {i}, reward_total: {reward_total}")
 
             reward_totals.append(reward_total)
@@ -124,18 +156,30 @@ class DDPGTrainer(BaseTrainer):
         next_states = np.array(next_states)
         dones = np.array(dones)
 
-        # Get targets (refactored to handle different calculation based on done)
-        targets = self.get_targets(rewards, next_states, dones)
+        # Train critic
+        target_next_actions = self.target_actor_model.predict_on_batch(next_states)
 
-        # Create target_vecs
-        target_vecs = self.target_model.predict(states)
-        for i, action in enumerate(actions):
-            # Set target values in target_vecs
-            target_vecs[i, action] = targets[i]
-        loss = self.model.train_on_batch(states, target_vecs)
-        return loss
+        next_states_with_next_actions = [next_states]
+        next_states_with_next_actions.insert(self.critic_action_input_idx, target_next_actions)
+        target_q_values = self.target_critic_model.predict_on_batch(next_states_with_next_actions).flatten()
+        gamma = self.hyperparameters.discount_rate(self.episode_number)
 
-    def get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
+        discounted_next_state_rewards = gamma * target_q_values
+        next_state_rewards_coeff = dones == 0  # Only add the next state reward if not done.
+        targets = rewards + discounted_next_state_rewards * next_state_rewards_coeff
+
+        states_with_actions = [states]
+        states_with_actions.insert(self.critic_action_input_idx, actions)
+
+        critic_loss = self.critic_model.train_on_batch(states_with_actions, targets)
+
+        # Train actor
+        actor_inputs = [states, True]  # True tells model that it's in training mode.
+        action_values = self.actor_train_fn(actor_inputs)[0]
+
+        return critic_loss
+
+    def ___get_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
         """
         Calculates targets based on done.
         If done,
@@ -157,25 +201,24 @@ class DDPGTrainer(BaseTrainer):
         targets[done_false_indices] = rewards[done_false_indices] + gamma * np.max(target_q_values, axis=1)
         return targets
 
-    def get_policy_q_values(self, state) -> np.ndarray:
-        logger.debug("Get policy Q values")
-        q_values = self.model.predict(state.reshape((1, -1)))
-        logger.debug(f"Q values {q_values}")
-        return q_values[0]
-
     def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
         exploration = self.hyperparameters.exploration_options
-        q_values = self.get_policy_q_values(observation)
+        action = self.model.predict(observation.reshape((1, -1))).flatten()
 
-        if exploration.method == ExplorationMethod.EPSILON:
-            return EpsilonGreedyPolicy.get_action(
-                exploration.get_epsilon(self.episode_number), q_values, self.env.get_random_action, log_func)
-        elif exploration.method == ExplorationMethod.SOFTMAX:
-            return SoftmaxPolicy.get_action(q_values, exploration.get_B_RL(self.episode_number), log_func)
+        if isinstance(exploration, OrnsteinUhlenbeck):
+            return exploration.get_action(action)
+        elif exploration.method == ExplorationMethod.EPSILON:
+            if np.random.random() < exploration.get_epsilon(self.episode_number):
+                action = self.env.get_random_action()
+                log_func(f"action: {action} (randomly generated)")
+                return self.env.get_random_action()
+            else:
+                log_func(f"action: {action} (generated by actor)")
+                return action
         else:
             raise ValueError(f"Unknown exploration method: {exploration.method}")
 
-    def update_target_model(self, soft: bool, tau: float):
+    def update_target_models(self, soft: bool, tau: float):
         """
         Update target model's weights with policy model's.
         If soft,
@@ -186,12 +229,17 @@ class DDPGTrainer(BaseTrainer):
         :return:
         """
         if soft:
-            self.target_model.model.set_weights(
+            self.target_actor_model.model.set_weights(
                 tau * np.array(self.model.model.get_weights())
-                + (1 - tau) * np.array(self.target_model.model.get_weights())
+                + (1 - tau) * np.array(self.target_actor_model.model.get_weights())
+            )
+            self.target_critic_model.model.set_weights(
+                tau * np.array(self.critic_model.model.get_weights())
+                + (1 - tau) * np.array(self.target_critic_model.model.get_weights())
             )
         else:
-            self.target_model.model.set_weights(self.model.model.get_weights())
+            self.target_actor_model.model.set_weights(self.model.model.get_weights())
+            self.target_critic_model.model.set_weights(self.critic_model.model.get_weights())
 
     @log_process(logger, "evaluating model")
     def evaluate_model(self, render, tensorboard_batch_number: int = None):
@@ -202,7 +250,7 @@ class DDPGTrainer(BaseTrainer):
         observation = self.env.reset()
         actions = []
         while not done:
-            action = int(np.argmax(self.get_policy_q_values(observation)))
+            action = self.model.predict(observation.reshape((1, -1))).flatten()
             actions.append(action)
             new_observation, reward, done, info = self.env.step(action)
 
@@ -212,17 +260,9 @@ class DDPGTrainer(BaseTrainer):
                 self.env.render()
         if tensorboard_batch_number is not None:
             tf_log(self.evaluation_tensorboard, ['reward'], [reward_total], tensorboard_batch_number)
-        logger.info(f"actions: {actions}")
+        logger.info(f"actions: {np.concatenate(actions)}")
         logger.info(f"Evaluation reward: {reward_total}")
         self.evaluation_rewards.append(reward_total)
-
-    def get_q_values(self, state):
-        """
-        Not needed - see get_target_q_values and get_policy_q_values
-        :param state:
-        :return:
-        """
-        raise RuntimeError
 
 
 if __name__ == '__main__':
@@ -233,20 +273,23 @@ if __name__ == '__main__':
     from reinforcement_learning.time_sensitive_envs.pendulum_env import PendulumTSEnv
 
     time_sensitive = False
-    env = PendulumTSEnv(time_sensitive=time_sensitive, discrete=True)
+    # env = PendulumTSEnv(time_sensitive=time_sensitive, discrete=True)
+    env = PendulumTSEnv(time_sensitive=time_sensitive)
     inputs = 4 if time_sensitive else 3
-    model = DenseModel(inputs=inputs, outputs=2, layer_nodes=(48, 48), learning_rate=3e-3,
-                       inner_activation='relu', output_activation='linear')
+    outputs = 1
+    actor_model = DenseModel(inputs=inputs, outputs=outputs, layer_nodes=(48, 48), learning_rate=3e-3,
+                             inner_activation='relu', output_activation='tanh')
+    critic_model = BaseCriticModel(inputs=inputs, outputs=outputs)
 
     EPISODES = 20000
 
     trainer = DDPGTrainer(
-        model, env,
-        hyperparameters=QLearningHyperparameters(
+        actor_model, env, critic_model=critic_model,
+        hyperparameters=DDPGHyperparameters(
             0.95,
             # ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.9, epsilon_decay=0.99,
             #                    limiting_value=0.03)
-            ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=0.5, softmax_total_episodes=EPISODES)
+            OrnsteinUhlenbeck(theta=0.15)
         ),
         options=DQNTrainerOptions(render=True)
     )

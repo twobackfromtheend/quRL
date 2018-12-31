@@ -4,7 +4,8 @@ from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import B
 
 
 class PendulumTSEnv(BaseTimeSensitiveEnv):
-    discrete_actions = [-2, 2]
+    # discrete_actions = [-2, 2]
+    discrete_actions = [-1, 1]
 
     def __init__(self, max_episode_steps: int = 200, time_sensitive: bool = True, discrete: bool = False):
         super().__init__(max_episode_steps, time_sensitive)
