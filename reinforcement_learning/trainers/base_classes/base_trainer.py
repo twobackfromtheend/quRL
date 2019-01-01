@@ -6,7 +6,7 @@ from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_model import BaseModel
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.base_options import BaseTrainerOptions
-from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters
+from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, DDPGHyperparameters
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class BaseTrainer:
     def __init__(self,
                  model: BaseModel,
                  env: Union[BaseQEnv, BaseTimeSensitiveEnv],
-                 hyperparameters: QLearningHyperparameters,
+                 hyperparameters: Union[QLearningHyperparameters, DDPGHyperparameters],
                  options: BaseTrainerOptions):
         self.model = model
         self.env = env

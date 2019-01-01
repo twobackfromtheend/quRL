@@ -2,6 +2,8 @@ import logging
 from enum import Enum, auto
 from typing import Callable, Union
 
+from reinforcement_learning.trainers.policies.ornstein_uhlenbeck import OrnsteinUhlenbeck
+
 logger = logging.getLogger(__name__)
 
 
@@ -106,6 +108,23 @@ class QLearningHyperparameters:
         :param discount_rate: (aka discount rate) - used to calculate future discounted reward, suggested: 0.95
             Can be a function that takes in the episode number as argument and returns a float
         :param exploration_options: See ExplorationOptions
+        """
+        self.discount_rate = discount_rate
+        if isinstance(discount_rate, float):
+            assert 0 < discount_rate <= 1, "Decay rate (discount rate) has to be between 0 and 1"
+            self.discount_rate = lambda _: discount_rate
+        self.exploration_options = exploration_options
+
+
+class DDPGHyperparameters:
+    def __init__(self, discount_rate: DiscountRate,
+                 exploration_options: Union[ExplorationOptions, OrnsteinUhlenbeck]):
+        """
+        Defines hyperparameters required for DDPG.
+        :param discount_rate: (aka discount rate) - used to calculate future discounted reward, suggested: 0.95
+            Can be a function that takes in the episode number as argument and returns a float
+        :param exploration_options: Either ExplorationOption.EPSILON or OrnsteinUhlenbeck.
+            Softmax not applicable as only 1 action and q-value is generated per step.
         """
         self.discount_rate = discount_rate
         if isinstance(discount_rate, float):

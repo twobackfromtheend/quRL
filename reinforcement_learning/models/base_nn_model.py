@@ -61,3 +61,6 @@ class BaseNNModel(BaseModel):
 
     def train_on_batch(self, x: np.ndarray, y: np.ndarray):
         return self.model.train_on_batch(x, y)
+
+    def predict_on_batch(self, x: np.ndarray) -> np.ndarray:
+        return self.model.predict_on_batch(x)

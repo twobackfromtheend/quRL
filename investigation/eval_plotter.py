@@ -26,7 +26,7 @@ def parse_csv(filepath: str) -> List[LearningRun]:
     return learning_runs
 
 
-def plot_data(learning_runs: Sequence[LearningRun]):
+def plot_data(learning_runs: Sequence[LearningRun], eval_every: int):
     cmap = plt.get_cmap('viridis')
 
     Ns = np.array([learning_run.N for learning_run in learning_runs])
@@ -42,10 +42,15 @@ def plot_data(learning_runs: Sequence[LearningRun]):
 
     ax = plt.figure(figsize=(20, 10))
 
+    x = np.arange(len(learning_runs[0].evaluation_rewards)) * eval_every
     for i, N in enumerate(Ns):
-        plt.plot(learning_runs[i].evaluation_rewards, '-', color=color_dict[N], label=N)
+        plt.plot(x, learning_runs[i].evaluation_rewards, '-', color=color_dict[N], label=N)
 
     plt.grid()
+
+    plt.xlabel("Episodes")
+    plt.ylabel("Evaluation fidelity")
+    plt.title("Plot of achieved fidelity against episode count for varying N, fixed dt.")
 
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(plt.gca())
@@ -62,12 +67,35 @@ def plot_data(learning_runs: Sequence[LearningRun]):
         boundaries=np.linspace(N_min - Ns_step / 2, N_max + Ns_step / 2, len(Ns) + 1),
         cax=cax
      )
+    plt.xlabel("N")
 
     plt.tight_layout()
     plt.show()
 
 
+def plot_max_fidelities(learning_runs: Sequence[LearningRun]):
+    dt = 0.05
+    Ns = np.array([learning_run.N for learning_run in learning_runs])
+    Ts = dt * Ns
+
+    max_fidelities = [max(learning_run.evaluation_rewards) for learning_run in learning_runs]
+
+    plt.plot(Ts, max_fidelities, 'r.')
+
+    plt.xlim((0, 4))
+    plt.ylim((-0.01, 1.01))
+
+    plt.ylabel("Maximum achieved fidelity (evaluations only)")
+    plt.xlabel("T")
+    plt.title("Plot of maximum achieved fidelity for varying T, fixed dt")
+
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
+    EVAL_EVERY = 50
     data_filename = "data.csv"
 
     data_directory = "data"
@@ -76,5 +104,6 @@ if __name__ == '__main__':
 
     data = parse_csv(data_filepath)
 
-    print(data)
-    plot_data(data)
+    # print(data)
+    plot_data(data, eval_every=EVAL_EVERY)
+    plot_max_fidelities(data)
