@@ -18,7 +18,8 @@ class OrnsteinUhlenbeck(BasePolicy):
         self.reset_states()
 
     def get_action(self, action: np.ndarray):
-        return action + self.sample()
+        action = action + self.sample()
+        return action
 
     def sample(self):
         noise = self.previous_noise + \

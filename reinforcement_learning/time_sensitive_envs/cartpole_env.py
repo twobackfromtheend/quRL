@@ -22,12 +22,3 @@ class CartPoleTSEnv(BaseTimeSensitiveEnv):
         if done:
             reward = 0
         return self.get_observation(new_state), reward, done, info
-
-    def vanilla_step(self, action):
-        """
-        Non-time-sensitive.
-        """
-        new_state, reward, done, info = self.env.step(action)
-        if done:
-            reward = 0
-        return new_state, reward, done, info
