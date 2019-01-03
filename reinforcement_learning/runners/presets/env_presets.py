@@ -4,6 +4,7 @@ from quantum_evolution.envs.presolved_q_env_2 import PresolvedQEnv2
 from quantum_evolution.envs.q_env_2 import QEnv2
 from quantum_evolution.envs.q_env_2_ss import QEnv2SingleSolve
 from quantum_evolution.envs.q_env_3 import QEnv3
+from quantum_evolution.envs.single_q_env import SingleQEnv
 from reinforcement_learning.runners.utils.env_data import EnvData
 from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
 from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
@@ -12,6 +13,8 @@ from reinforcement_learning.time_sensitive_envs.pendulum_env import PendulumTSEn
 
 class EnvPreset(Enum):
     QENV2 = EnvData(QEnv2, 2, 2)
+    SINGLEQENV = EnvData(SingleQEnv, 1, 2)
+    SINGLEQENV_CONTINUOUS = EnvData(lambda **kwargs: SingleQEnv(discrete=False, **kwargs), 1, 1)
     QENV3 = EnvData(QEnv3, 3, 2)
     PRESOLVED_QENV2 = EnvData(PresolvedQEnv2, 2, 2)
     QENV2_SS = EnvData(QEnv2SingleSolve, 2, 2)
