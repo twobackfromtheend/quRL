@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 class RQTrainer(BaseTrainer):
     """
-    Performs Watkins's Q-learning
+    Performs Watkins's Q-learning.
+    Passes a history of states as input to model.
 
     """
 
@@ -203,7 +204,7 @@ if __name__ == '__main__':
 
     env = QEnv2(hamiltonian_datas, t, N=N,
                 initial_state=initial_state, target_state=target_state)
-    model = QTable(inputs=2, outputs=2, learning_rate=0.05)
+    model = QTable(inputs=2, outputs=2, learning_rate=0.03)
     EPISODES = 20000
 
 
