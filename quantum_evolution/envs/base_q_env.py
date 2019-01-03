@@ -35,7 +35,7 @@ class BaseQEnv:
 
     def reset(self) -> np.ndarray:
         if self.simulation is None:
-            raise NotImplementedError("Subclasses of BasePseudoEnv must reset .simulation before calling super.reset")
+            raise NotImplementedError("Subclasses of BaseQEnv must reset .simulation before calling super.reset")
 
         self.current_state: Qobj = self.initial_state if self.initial_state is not None else self.get_random_state()
         self.target_state: Qobj = self.given_target_state \
