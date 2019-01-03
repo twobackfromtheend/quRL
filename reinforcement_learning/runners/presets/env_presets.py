@@ -7,6 +7,7 @@ from quantum_evolution.envs.q_env_3 import QEnv3
 from reinforcement_learning.runners.utils.env_data import EnvData
 from reinforcement_learning.time_sensitive_envs.acrobot_env import AcrobotTSEnv
 from reinforcement_learning.time_sensitive_envs.cartpole_env import CartPoleTSEnv
+from reinforcement_learning.time_sensitive_envs.pendulum_env import PendulumTSEnv
 
 
 class EnvPreset(Enum):
@@ -18,3 +19,5 @@ class EnvPreset(Enum):
     ACROBOT_TS = EnvData(AcrobotTSEnv, 7, 2)
     CARTPOLE = EnvData(lambda: CartPoleTSEnv(time_sensitive=False), 4, 2)
     ACROBOT = EnvData(lambda: AcrobotTSEnv(time_sensitive=False), 6, 2)
+    PENDULUM = EnvData(lambda: PendulumTSEnv(time_sensitive=False), 3, 1)
+    PENDULUM_EXCLUDE_VEL = EnvData(lambda: PendulumTSEnv(time_sensitive=False, exclude_velocity=True), 2, 1)

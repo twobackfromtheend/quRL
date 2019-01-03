@@ -7,9 +7,11 @@ class PendulumTSEnv(BaseTimeSensitiveEnv):
     # discrete_actions = [-2, 2]
     discrete_actions = [-1, 1]
 
-    def __init__(self, max_episode_steps: int = 200, time_sensitive: bool = True, discrete: bool = False):
+    def __init__(self, max_episode_steps: int = 200, time_sensitive: bool = True, discrete: bool = False,
+                 exclude_velocity: bool = False):
         super().__init__(max_episode_steps, time_sensitive)
         self.discrete = discrete
+        self.exclude_velocity = exclude_velocity
 
         gym.envs.register(
             id='PendulumTimeSensitive-v0',
@@ -18,23 +20,15 @@ class PendulumTSEnv(BaseTimeSensitiveEnv):
         )
         self.env = gym.make('PendulumTimeSensitive-v0')
 
+    def get_observation(self, state):
+        if self.exclude_velocity:
+            state = state[:-1]
+        return super().get_observation(state)
+
     def step(self, action):
         if self.discrete:
             action = self.discrete_actions[action]
         new_state, reward, done, info = self.env.step(action)
-        _ = self.increment_step_number()  # Ignore done-ness returned - it only returns True if on last stage.
+        _ = self.increment_step_number()
 
-        if done:
-            reward = 0
         return self.get_observation(new_state), reward, done, info
-
-    def vanilla_step(self, action):
-        """
-        Non-time-sensitive.
-        """
-        if self.discrete:
-            action = [self.discrete_actions[action]]
-        new_state, reward, done, info = self.env.step(action)
-        if done:
-            reward = 0
-        return new_state, reward, done, info

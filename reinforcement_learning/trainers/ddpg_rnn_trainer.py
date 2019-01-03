@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 
@@ -7,25 +7,28 @@ from logger_utils.logger_utils import log_process
 from quantum_evolution.envs.base_q_env import BaseQEnv
 from reinforcement_learning.models.base_critic_model import BaseCriticModel
 from reinforcement_learning.models.base_nn_model import BaseNNModel
+from reinforcement_learning.models.rnn__critic_model import RNNCriticModel
 from reinforcement_learning.tensorboard_logger import tf_log, create_callback
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
 from reinforcement_learning.trainers.base_classes.base_actor_critic_trainer import BaseActorCriticTrainer
 from reinforcement_learning.trainers.base_classes.hyperparameters import ExplorationMethod, DDPGHyperparameters
-from reinforcement_learning.trainers.ddpg_options import DDPGTrainerOptions
+from reinforcement_learning.trainers.ddpg_rnn_options import DDPGRNNTrainerOptions
 from reinforcement_learning.trainers.policies.ornstein_uhlenbeck import OrnsteinUhlenbeck
-from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import ExperienceReplayHandler, \
-    InsufficientExperiencesError
+from reinforcement_learning.trainers.replay_handlers.episodic_experience_replay_handler import \
+    EpisodicExperienceReplayHandler
+from reinforcement_learning.trainers.replay_handlers.experience_replay_handler import InsufficientExperiencesError, \
+    ExperienceReplayHandler
 
 logger = logging.getLogger(__name__)
 
 
-class DDPGTrainer(BaseActorCriticTrainer):
+class DDPGRNNTrainer(BaseActorCriticTrainer):
     """
     Performs DDPG
     """
 
     def __init__(self, model: BaseNNModel, env: Union[BaseQEnv, BaseTimeSensitiveEnv],
-                 hyperparameters: DDPGHyperparameters, options: DDPGTrainerOptions,
+                 hyperparameters: DDPGHyperparameters, options: DDPGRNNTrainerOptions,
                  critic_model: BaseCriticModel):
         super().__init__(model, env, hyperparameters, options, critic_model)
         # self.model is the actor model
@@ -34,11 +37,15 @@ class DDPGTrainer(BaseActorCriticTrainer):
 
         self.evaluation_tensorboard = None
         self.evaluation_rewards = []
+        # self.replay_handler = EpisodicExperienceReplayHandler()
         self.replay_handler = ExperienceReplayHandler()
+
         self.episode_number: int = 0
         self.step_number: int = 0
 
         self.actor_train_fn = self.critic_model.get_actor_train_fn(self.model, self.options.actor_optimizer)
+
+        self.step_buffer: List[np.ndarray] = []  # list of states
 
     @log_process(logger, 'training')
     def train(self, episodes: int = 1000):
@@ -71,17 +78,21 @@ class DDPGTrainer(BaseActorCriticTrainer):
             done = False
 
             while not done:
-                action = self.get_action(observation)
+                self.step_buffer.append(observation)
+                stacked_observation = self.get_stacked_observation()
+                action = self.get_action(stacked_observation)
 
                 actions.append(action)
                 new_observation, reward, done, info = self.env.step(action)
+                new_stacked_observation = self.get_stacked_observation(step_buffer=self.step_buffer + [new_observation])
                 logger.debug(f"new_observation: {new_observation}")
 
-                self.replay_handler.record_experience(observation, action, reward, new_observation, done)
+                self.replay_handler.record_experience(stacked_observation, action, reward, new_stacked_observation, done)
                 try:
                     loss = self.batch_experience_replay()
                     losses.append(loss)
                 except InsufficientExperiencesError:
+                    logger.warning(f"Insufficient experiences (step number: {self.step_number}), continuing")
                     pass
 
                 if self.step_number % update_target_every == 0:
@@ -92,6 +103,12 @@ class DDPGTrainer(BaseActorCriticTrainer):
                 if render:
                     self.env.render()
                 self.step_number += 1
+
+            # try:
+            #     losses = self.batch_episode_experience_replay()
+            # except InsufficientExperiencesError:
+            #     losses = []
+            #     pass
 
             if self.tensorboard and losses:
                 tf_log(self.tensorboard,
@@ -111,6 +128,79 @@ class DDPGTrainer(BaseActorCriticTrainer):
         self.reward_totals = reward_totals
         self.save_model()
 
+    def get_stacked_observation(self, step_buffer=None):
+        """
+        :param step_buffer: Defaults to self.step_buffer
+        :return:
+        """
+        rnn_steps = self.options.rnn_steps
+        if step_buffer is None:
+            step_buffer = self.step_buffer
+        step_buffer_length = len(step_buffer)
+        if step_buffer_length >= rnn_steps:
+            return np.array(step_buffer[-rnn_steps:]).reshape((1, self.options.rnn_steps, -1))
+        else:
+            # Fill list with all initial_states ie. [0, 0, 0, 1, 2] where there are only 3 steps in buffer
+            observation = [np.zeros_like(step_buffer[0]) for _ in range(rnn_steps)]
+            for i, j in enumerate(range(rnn_steps - step_buffer_length, rnn_steps)):
+                # i is a counter from 0
+                # j is a counter to fill up the last values with the existing values
+                observation[j] = step_buffer[i]
+        return np.array(observation).reshape((1, self.options.rnn_steps, -1))
+
+    def __________batch_episode_experience_replay(self):
+        losses = []
+        for episode in self.replay_handler.generator():
+            # Pick random step to train on
+            episode_states = []
+            episode_actions = []
+            episode_rewards = []
+            episode_next_states = []
+            episode_dones = []
+            for step_number in range(len(episode)):
+                # General machinery
+                states = []
+                next_states = []
+                for i in reversed(range(self.options.rnn_steps)):
+                    experience_index = 0 if step_number < i else step_number - i
+                    experience = episode[experience_index]
+                    states.append(experience.state)
+                    # This gives next state of [0, 0, 1] for state of [0, 0, 0] (and so on)
+                    next_state = experience.state if step_number < i else experience.next_state
+                    next_states.append(next_state)
+
+                # Converting to np.arrays
+                states = np.array(states).reshape(self.get_rnn_shape())
+                action = episode[step_number].action
+                reward = episode[step_number].reward
+                done = episode[step_number].done
+                next_states = np.array(next_states).reshape(self.get_rnn_shape())
+                # Get targets (refactored to handle different calculation based on done)
+                episode_next_states.append(next_states)
+                episode_rewards.append(reward)
+                episode_dones.append(done)
+                episode_states.append(states)
+                episode_actions.append(action)
+
+            episode_states = np.squeeze(np.array(episode_states), axis=1)
+            episode_next_states = np.squeeze(np.array(episode_next_states), axis=1)
+            episode_rewards = np.array(episode_rewards)
+            episode_actions = np.array(episode_actions)
+            episode_dones = np.array(episode_dones)
+
+            targets = self.get_critic_targets(episode_rewards, episode_next_states, episode_dones)
+
+            states_with_actions = self.critic_model.create_input(episode_states, episode_actions)
+            critic_loss = self.critic_model.train_on_batch(states_with_actions, targets)
+
+            # Train actor
+            actor_inputs = [episode_states, True]  # True tells model that it's in training mode.
+            action_values = self.actor_train_fn(actor_inputs)[0]  # actions not needed for anything.
+
+            losses.append(critic_loss)
+
+        return losses
+
     def batch_experience_replay(self):
         # General machinery
         states = []
@@ -126,10 +216,10 @@ class DDPGTrainer(BaseActorCriticTrainer):
             dones.append(experience.done)
 
         # Converting to np.arrays
-        states = np.array(states)
-        actions = np.array(actions)
+        states = np.array(states).squeeze(axis=1)
+        actions = np.array(actions).squeeze(axis=1)
         rewards = np.array(rewards)
-        next_states = np.array(next_states)
+        next_states = np.array(next_states).squeeze(axis=1)
         dones = np.array(dones)
 
         # Train critic
@@ -151,7 +241,6 @@ class DDPGTrainer(BaseActorCriticTrainer):
         # Train actor
         actor_inputs = [states, True]  # True tells model that it's in training mode.
         action_values = self.actor_train_fn(actor_inputs)[0]  # actions not needed for anything.
-
         return critic_loss
 
     def get_critic_targets(self, rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray) -> np.ndarray:
@@ -185,7 +274,7 @@ class DDPGTrainer(BaseActorCriticTrainer):
 
     def get_action(self, observation, log_func: Union[logging.debug, logging.info] = logging.debug):
         exploration = self.hyperparameters.exploration_options
-        action = self.model.predict(observation.reshape((1, -1))).flatten()
+        action = self.model.predict(observation).flatten()
 
         if isinstance(exploration, OrnsteinUhlenbeck):
             return exploration.get_action(action)
@@ -231,8 +320,11 @@ class DDPGTrainer(BaseActorCriticTrainer):
         reward_total = 0
         observation = self.env.reset()
         actions = []
+        step_buffer = []
+
         while not done:
-            action = self.model.predict(observation.reshape((1, -1))).flatten()
+            step_buffer.append(observation)
+            action = self.model.predict(self.get_stacked_observation(step_buffer)).flatten()
             actions.append(action)
             new_observation, reward, done, info = self.env.step(action)
 
@@ -246,9 +338,13 @@ class DDPGTrainer(BaseActorCriticTrainer):
         logger.info(f"Evaluation reward: {reward_total}")
         self.evaluation_rewards.append(reward_total)
 
+    def get_rnn_shape(self):
+        return 1, self.options.rnn_steps, -1
+
 
 if __name__ == '__main__':
-    from reinforcement_learning.models.dense_model import DenseModel
+    from reinforcement_learning.models.lstm_non_stateful_model import LSTMNonStatefulModel
+    from reinforcement_learning.models.simple_rnn_model import SimpleRNNModel
 
     logging.basicConfig(level=logging.INFO)
 
@@ -262,13 +358,14 @@ if __name__ == '__main__':
     if exclude_velocity:
         inputs -= 1
     outputs = 1
-    actor_model = DenseModel(inputs=inputs, outputs=outputs, layer_nodes=(48, 48), learning_rate=3e-3,
-                             inner_activation='relu', output_activation='tanh')
-    critic_model = BaseCriticModel(inputs=inputs, outputs=outputs)
+    rnn_steps = 1
+    actor_model = SimpleRNNModel(inputs=inputs, outputs=outputs, rnn_steps=rnn_steps, learning_rate=3e-3,
+                                 inner_activation='relu', output_activation='linear')
+    critic_model = RNNCriticModel(inputs=inputs, outputs=outputs, rnn_steps=rnn_steps)
 
     EPISODES = 20000
 
-    trainer = DDPGTrainer(
+    trainer = DDPGRNNTrainer(
         actor_model, env, critic_model=critic_model,
         hyperparameters=DDPGHyperparameters(
             0.95,
@@ -276,7 +373,7 @@ if __name__ == '__main__':
             #                    limiting_value=0.03)
             OrnsteinUhlenbeck(theta=0.15, sigma=0.3)
         ),
-        options=DDPGTrainerOptions(render=True)
+        options=DDPGRNNTrainerOptions(rnn_steps=rnn_steps, render=True)
     )
     trainer.train(episodes=EPISODES)
     logger.info(f"max reward total: {max(trainer.reward_totals)}")

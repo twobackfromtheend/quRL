@@ -7,10 +7,7 @@ class BaseTimeSensitiveEnv:
     def __init__(self, max_episode_steps: int, time_sensitive: bool):
         self.step_number = 0
         self.max_episode_steps = max_episode_steps
-
-        if not time_sensitive:
-            self.step = self.vanilla_step
-            self.reset = self.vanilla_reset
+        self.time_sensitive = time_sensitive
 
     def step(self, *args, **kwargs):
         new_state, reward, done, info = self.env.step(*args, **kwargs)
@@ -29,11 +26,13 @@ class BaseTimeSensitiveEnv:
 
     def get_observation(self, state):
         """
-        Appends the current step number to the state.
+        Appends the current step number to the state if self.time_sensitive is True.
         :param state:
         :return:
         """
-        return np.append(state, self.step_number)
+        if self.time_sensitive:
+            return np.append(state, self.step_number)
+        return state
 
     def increment_step_number(self) -> bool:
         """
@@ -46,16 +45,3 @@ class BaseTimeSensitiveEnv:
             done = False
         self.step_number += 1
         return done
-
-    def vanilla_step(self, action):
-        """
-        Non-time-sensitive.
-        """
-        new_state, reward, done, info = self.env.step(action)
-        return new_state, reward, done, info
-
-    def vanilla_reset(self, *args, **kwargs):
-        """
-        Non-time-sensitive.
-        """
-        return self.env.reset(*args, **kwargs)
