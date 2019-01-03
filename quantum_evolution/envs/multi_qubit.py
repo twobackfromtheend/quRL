@@ -35,6 +35,7 @@ class MultiQEnv(BaseQEnv):
         self.current_h_x = None
         self.current_step: int = 0
 
+
     def hamiltonian_generator(self, h: int):
         """
 
@@ -93,10 +94,10 @@ class MultiQEnv(BaseQEnv):
         assert action == 0 or action == 1, 'Action has to be 0 or 1.'
         self.current_h_x = self.current_h_x if action is 0 else -self.current_h_x
 
-        if action is 0:
+        if action == 0:
             self.current_h = self.current_h
 
-        elif action is 1:
+        elif action == 1:
             if self.current_h == self.hmax:
                 self.current_h = self.hmin
 
