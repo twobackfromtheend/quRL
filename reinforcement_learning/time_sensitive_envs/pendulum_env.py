@@ -1,3 +1,5 @@
+import random
+
 import gym
 
 from reinforcement_learning.time_sensitive_envs.base_time_sensitive_env import BaseTimeSensitiveEnv
@@ -27,8 +29,13 @@ class PendulumTSEnv(BaseTimeSensitiveEnv):
 
     def step(self, action):
         if self.discrete:
-            action = self.discrete_actions[action]
+            action = [self.discrete_actions[action]]
         new_state, reward, done, info = self.env.step(action)
         _ = self.increment_step_number()
 
         return self.get_observation(new_state), reward, done, info
+
+    def get_random_action(self):
+        if self.discrete:
+            return random.getrandbits(1)
+        return self.env.action_space.sample()

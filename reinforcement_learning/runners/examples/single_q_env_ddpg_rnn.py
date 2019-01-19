@@ -15,7 +15,8 @@ TRAINER = DDPGRNNTrainer
 rnn_steps = 10
 TRAINER_OPTIONS = DDPGRNNTrainerOptions(rnn_steps=rnn_steps)
 
-ENV = EnvPreset.SINGLEQENV_CONTINUOUS
+# ENV = EnvPreset.SINGLEQENV_CONTINUOUS
+ENV = EnvPreset.SINGLEQENV_CONTINUOUS_CONTAINS_STEP
 MODEL = partial(SimpleRNNModel, rnn_steps=rnn_steps, learning_rate=1e-3,
                 inner_activation='relu', output_activation='tanh')
 CRITIC_MODEL = partial(RNNCriticModel, rnn_steps=rnn_steps)

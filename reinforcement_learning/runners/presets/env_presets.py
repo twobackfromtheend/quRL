@@ -15,6 +15,8 @@ class EnvPreset(Enum):
     QENV2 = EnvData(QEnv2, 2, 2)
     SINGLEQENV = EnvData(SingleQEnv, 1, 2)
     SINGLEQENV_CONTINUOUS = EnvData(lambda **kwargs: SingleQEnv(discrete=False, **kwargs), 1, 1)
+    SINGLEQENV_CONTINUOUS_CONTAINS_STEP = EnvData(lambda **kwargs: SingleQEnv(discrete=False, state_contains_step_number=True, **kwargs), 2, 1)
+    MULTIQENV_CONTINUOUS_CONTAINS_STEP = EnvData(lambda **kwargs: SingleQEnv(discrete=False, state_contains_step_number=True, **kwargs), 2, 1)
     QENV3 = EnvData(QEnv3, 3, 2)
     PRESOLVED_QENV2 = EnvData(PresolvedQEnv2, 2, 2)
     QENV2_SS = EnvData(QEnv2SingleSolve, 2, 2)
