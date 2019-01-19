@@ -14,7 +14,7 @@ from reinforcement_learning.trainers.drqn_options import DRQNTrainerOptions
 
 all_eval_rewards = []
 
-_rnn_steps = np.arange(20, 60)
+_rnn_steps = np.arange(10, 61, step=10)
 # _rnn_steps = np.arange(10, 12)
 
 for rnn_steps in _rnn_steps:
@@ -22,15 +22,15 @@ for rnn_steps in _rnn_steps:
     TRAINER_OPTIONS = DRQNTrainerOptions(rnn_steps=rnn_steps, update_target_soft=True)
 
     ENV = EnvPreset.QENV2_SS
-    MODEL = partial(LSTMNonStatefulModel, rnn_steps=rnn_steps, learning_rate=3e-3,
+    MODEL = partial(LSTMNonStatefulModel, rnn_steps=rnn_steps, learning_rate=1e-3,
                     inner_activation='relu', output_activation='linear')
 
-    EPISODES = 5000
+    EPISODES = 10000
     DISCOUNT_RATE = DiscountRatePreset.CONST_99
     # EXPLORATION = ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=1.0, epsilon_decay=0.9995,
     #                                  limiting_value=0.08)
-    EXPLORATION = ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=50.0, limiting_value=10000,
-                                     softmax_total_episodes=20000)
+    EXPLORATION = ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=100.0, limiting_value=10000,
+                                     softmax_total_episodes=10000)
     T = rnn_steps * 0.05
 
     initial_state, target_state, hamiltonian_datas, N = get_quantum_variables(T)
