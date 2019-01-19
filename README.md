@@ -69,6 +69,8 @@ This means that it does not support `render` calls as the intermediate states ar
 `PresolvedQEnv2` is like `QEnv2SingleSolve`, except it also stores the calculated fidelities (for a given protocol) to a `dict` to avoid calling `solve` for repeated protocols.
 This is not suitable for protocols with a large number of steps, but saves calculation on shorter protocols.
 
+_TODO: Update README to refer to new SingleQEnv and MultiQEnvs_
+
 ### Reinforcement learning
 
 A high-level `run()` function is available, taking in `TRAINER`, `TRAINER_OPTIONS`, `MODEL`, `ENV` parameters (among others).
