@@ -2,11 +2,12 @@ import logging
 
 import numpy as np
 
+from quantum_evolution.envs.multi_q_env import MultiQEnv
 from reinforcement_learning.trainers.base_classes.hyperparameters import QLearningHyperparameters, ExplorationOptions, \
     ExplorationMethod
 from reinforcement_learning.trainers.drqn_batched_trainer import DRQNBatchedTrainer
 from reinforcement_learning.trainers.drqn_options import DRQNTrainerOptions
-from quantum_evolution.envs.multi_qubit import MultiQEnv
+# from quantum_evolution.envs.multi_qubit import MultiQEnv
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +45,15 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
 
-    for t in np.arange(0.5, 0.6, 0.1):
+    # for t in np.arange(0.5, 0.6, 0.1):
+    for t in [3.0]:
         time_sensitive = False
         t_t = t
         t_N = int(round(t_t / 0.05))
         env = MultiQEnv(t_t, t_N)
         inputs = 2
-        rnn_steps = 10
-        model = LSTMNonStatefulModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=3e-3,
+        rnn_steps = t_N
+        model = LSTMNonStatefulModel(inputs=inputs, outputs=2, rnn_steps=rnn_steps, learning_rate=1e-3,
                                      inner_activation='relu', output_activation='linear')
 
         # if t < 0.6:
@@ -63,7 +65,7 @@ if __name__ == '__main__':
         trainer = DoubleDRQNBatchedTrainer(
             model, env,
             hyperparameters=QLearningHyperparameters(
-                0.95,
+                0.995,
                 # ExplorationOptions(method=ExplorationMethod.EPSILON, starting_value=0.5, epsilon_decay=0.999,
                 #                    limiting_value=0.1)
                 ExplorationOptions(method=ExplorationMethod.SOFTMAX, starting_value=100,
