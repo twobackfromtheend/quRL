@@ -23,7 +23,7 @@ class LSTMNonStatefulModel(BaseNNModel):
     """
     def __init__(self, inputs: int, outputs: int, rnn_steps: int,
                  inner_activation=tf.nn.relu, output_activation='linear',
-                 learning_rate=0.003,
+                 learning_rate=0.001,
                  loss_fn='mse', **kwargs):
         logger.info(f'Creating LSTMModel with {inputs} inputs and {outputs} outputs.')
         self.rnn_steps = rnn_steps
@@ -38,8 +38,8 @@ class LSTMNonStatefulModel(BaseNNModel):
     def build_model(self) -> keras.Sequential:
         model = keras.Sequential()
         input_shape = (self.rnn_steps, self.inputs)
-        model.add(LSTM_LAYER(24, input_shape=input_shape, return_sequences=True))
-        model.add(LSTM_LAYER(24, input_shape=input_shape))
+        model.add(LSTM_LAYER(64, input_shape=input_shape, return_sequences=True))
+        model.add(LSTM_LAYER(64, input_shape=input_shape))
 
         model.add(Dense(self.outputs, activation=self.output_activation))
         optimizer = keras.optimizers.Adam(lr=self.learning_rate)
