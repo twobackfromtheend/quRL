@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 from qutip import *
 
@@ -129,3 +131,9 @@ class MultiQEnv(BaseQEnv):
 
     def get_state(self) -> np.ndarray:
         return np.array((self.current_step * self.dt, self.current_h_x))
+
+    def get_random_action(self):
+        if self.discrete:
+            return random.getrandbits(1)
+        else:
+            return np.array([random.uniform(self.min_h_x, self.max_h_x)])
