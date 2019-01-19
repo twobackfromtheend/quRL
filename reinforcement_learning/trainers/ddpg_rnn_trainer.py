@@ -256,7 +256,7 @@ class DDPGRNNTrainer(BaseActorCriticTrainer):
         :return: Targets - 1D np.array
         """
         # Targets initialised w/ done == True steps
-        targets = rewards.copy()
+        targets = rewards.copy().astype(np.float64)
 
         # Targets for done == False steps calculated with target network
         done_false_indices = dones == 0
